@@ -17,7 +17,7 @@ function App() {
   const { theme } = useSelector((state) => state.theme);
 
   return (
-    <main data-theme={theme} className="w-max-9xl h-full w-full">
+    <main data-theme={theme} className="min-h-[100vh] w-full">
       <Routes>
         <Route element={<Layout />}>
           <Route path={'/'} element={<Home />} />
