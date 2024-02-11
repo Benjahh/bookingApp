@@ -3,8 +3,8 @@ import z from 'zod';
 const emailVeriificationSchema = z.object({
   userId: z.string(),
   token: z.string(),
-  createdAt: z.date(),
-  expiresAt: z.date(),
+  createdAt: z.number(),
+  expiresAt: z.number(),
 });
 
 export function validateEmailVerification(input) {

@@ -1,8 +1,8 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
-import { hashedString } from './auth';
-import { validateEmailVerification } from '../schema/emailVerification';
+import { hashedString } from './auth.js';
+import { validateEmailVerification } from '../schema/emailVerification.js';
 
 dotenv.config();
 
@@ -17,9 +17,13 @@ let transporter = nodemailer.createTransport({
 });
 
 export const sendVerificationEmail = async (user, res) => {
-  const { _id, email, lastName } = user;
-  const token = _id + uuidv4();
-  const link = APP_URL + 'users/verify/' + _id + '/' + token;
+  console.log('sendVerificationEmail', user[0]);
+  const { id, email, lastname } = user[0];
+  console.log('sendVerificationEmail', id, email, lastname);
+  const token = id + uuidv4();
+  const link = APP_URL + 'users/verify/' + id + '/' + token;
+
+  console.log('Token: ', token, 'app url:', link);
 
   const mailOptions = {
     from: AUTH_EMAIL,
@@ -29,7 +33,7 @@ export const sendVerificationEmail = async (user, res) => {
         style='font-family: Arial, sans-serif; font-size: 20px; color: #333; background-color: #f7f7f7; padding: 20px; border-radius: 5px;'>
         <h3 style="color: rgb(8, 56, 188)">Please verify your email address</h3>
         <hr>
-        <h4>Hi ${lastName},</h4>
+        <h4>Hi ${lastname},</h4>
         <p>
             Please verify your email address so we can know that it's really you.
             <br>
@@ -48,11 +52,16 @@ export const sendVerificationEmail = async (user, res) => {
 
   try {
     const hashedToken = await hashedString(token);
-    const newVerifiedEmail = await validateEmailVerification(...user, {
+
+    console.log(hashedToken);
+    const newVerifiedEmail = await validateEmailVerification({
+      userId: id,
       token: hashedToken,
       createdAt: Date.now(),
       expiresAt: Date.now() * 3600000,
     });
+
+    console.log(newVerifiedEmail);
     if (newVerifiedEmail.success) {
       transporter
         .sendMail(mailOptions)
@@ -62,12 +71,18 @@ export const sendVerificationEmail = async (user, res) => {
             message:
               'Verification email has been sent to your account. Check your email for further instructions.',
           });
+          console.log(
+            'Verification email has been sent to your account. Check your email for further instructions.'
+          );
         })
         .catch((err) => {
           console.log(err);
           res.status(404).json({ message: 'Something went wrong' });
         });
+    } else {
+      console.error(newVerifiedEmail.error);
     }
+    console.log(newVerifiedEmail);
   } catch (error) {
     console.log(error);
     res.status(404).json({ message: 'Something went wrong' });

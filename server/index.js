@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import morgan from 'morgan';
+import morganBody from 'morgan-body';
 import bodyParser from 'body-parser';
 import helmet from 'helmet';
 import { errorMiddleware } from './middleware/errorMiddleware.js';
@@ -18,7 +18,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan('dev'));
+morganBody(app);
 
 app.use(router);
 

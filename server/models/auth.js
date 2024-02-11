@@ -1,29 +1,31 @@
-import * as pg from 'pg';
-const { client } = pg;
-import { compareString, hashedPassword } from '../utils/auth.js';
+import { compareString, hashedString } from '../utils/auth.js';
 import { sendVerificationEmail } from '../utils/verifyEmail.js';
-import { dbclient } from '../dbConfig';
+import { dbclient, handleDBConnection } from '../dbConfig/index.js';
 
 export const registerAuth = async (body) => {
   try {
     const { firstName, lastName, email, password } = body;
     await handleDBConnection();
     const userExists = await dbclient.query(
-      'SELECT DISTINCT email FROM users WHERE email = $1 ',
+      'SELECT email FROM "user" WHERE email = $1; ',
       [email]
     );
-    if (userExists) {
-      client.end();
-      return 'Email already exists';
+
+    if (userExists.rows.length > 0) {
+      dbclient.end();
+      return console.log('Email already exists');
     }
-    const hashedPass = await hashedPassword(password);
-    const user = await client.query(
-      'INSERT INTO users (email, password, firstName, lastName) VALUES ($1, $2, $3, $4)',
+    const hashedPass = await hashedString(password);
+    const user = await dbclient.query(
+      'INSERT INTO "user" (email, password, firstName, lastName) VALUES ($1, $2, $3, $4) RETURNING * ;',
       [email, hashedPass, firstName, lastName]
     );
-    sendVerificationEmail(user, res);
-    await client.end();
-  } catch (error) {}
+    console.log(user.rows);
+    sendVerificationEmail(user.rows);
+    await dbclient.end();
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 export const loginAuth = async (body) => {
@@ -58,5 +60,7 @@ export const loginAuth = async (body) => {
       user,
       token,
     });
-  } catch (error) {}
+  } catch (error) {
+    console.log(error);
+  }
 };
