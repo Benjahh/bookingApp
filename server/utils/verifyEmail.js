@@ -50,7 +50,24 @@ export const sendVerificationEmail = async (user, res) => {
     const hashedToken = await hashedString(token);
     const newVerifiedEmail = await validateEmailVerification(...user, {
       token: hashedToken,
+      createdAt: Date.now(),
+      expiresAt: Date.now() * 3600000,
     });
+    if (newVerifiedEmail.success) {
+      transporter
+        .sendMail(mailOptions)
+        .then(() => {
+          res.status(201).send({
+            success: 'PENDING',
+            message:
+              'Verification email has been sent to your account. Check your email for further instructions.',
+          });
+        })
+        .catch((err) => {
+          console.log(err);
+          res.status(404).json({ message: 'Something went wrong' });
+        });
+    }
   } catch (error) {
     console.log(error);
     res.status(404).json({ message: 'Something went wrong' });

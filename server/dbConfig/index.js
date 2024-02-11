@@ -1,6 +1,6 @@
 import * as pg from 'pg';
 const { Client } = pg;
-const client = new Client(process.env.DB_CONFIG);
+export const dbclient = new Client(process.env.DB_CONFIG);
 
 export const handleDBConnection = async () => {
   try {
