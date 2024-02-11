@@ -1,11 +1,11 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   posts: {},
 };
 
 const postSlice = createSlice({
-  name: "post",
+  name: 'post',
   initialState,
   reducers: {
     getPosts(state, action) {

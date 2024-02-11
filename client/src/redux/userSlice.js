@@ -1,21 +1,21 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  user: JSON.parse(window.localStorage.getItem("user")) ?? {},
+  user: JSON.parse(window.localStorage.getItem('user')) ?? {},
   edit: false,
 };
 
 const userSlice = createSlice({
-  name: "user",
+  name: 'user',
   initialState,
   reducers: {
     login(state, action) {
       state.user = action.payload;
-      localStorage.setItem("user", JSON.stringify(action.payload));
+      localStorage.setItem('user', JSON.stringify(action.payload));
     },
     logout(state, action) {
       state.user = null;
-      localStorage?.removeItem("user");
+      localStorage?.removeItem('user');
     },
     updateProfile(state, action) {
       state.edit = action.payload;
