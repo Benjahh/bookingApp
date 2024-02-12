@@ -70,10 +70,31 @@ export const verifyEmailQuery = async (params) => {
   const { userId, token, createdAt, expiresAt } = params.data;
   try {
     const result = await dbclient.query(
-      'INSERT INTO "emailValidation" VALUES ($1, $2, $3, $4) RETURNING *;',
-      [userId, token, createdAt, expiresAt]
+      'SELECT * FROM "emailValidation" WHERE userId = $1',
+      [userId]
     );
-    console.log('Query result', result);
+    if (result.rows.length < 0) {
+      const email = await dbclient.query(
+        'INSERT INTO "emailValidation" VALUES ($1, $2, $3, $4) RETURNING *;',
+        [userId, token, createdAt, expiresAt]
+      );
+      return email;
+    }
+    if (result) {
+      const { expiresAt, token: hashedToken } = result.rows[0];
+      if (expiresAt < Date.now()) {
+        await dbclient.query('DELETE FROM "user" WHERE userId = $1', [userId]);
+        await dbclient.query(
+          'DELETE FROM "emailValidation" WHERE userId = $1',
+          [userId]
+        );
+        await dbclient.query('COMMIT');
+        console.log('Deleted validation');
+      }
+    } else {
+      compareString(token, hashedToken).then();
+    }
+    console.log('Query result', result.rows);
     dbclient.end();
   } catch (error) {
     console.log(error);
