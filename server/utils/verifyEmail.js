@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
 import { hashedString } from './auth.js';
 import { validateEmailVerification } from '../schema/emailVerification.js';
+import { verifyEmailQuery } from '../models/auth.js';
 
 dotenv.config();
 
@@ -17,13 +18,10 @@ let transporter = nodemailer.createTransport({
 });
 
 export const sendVerificationEmail = async (user, res) => {
-  console.log('sendVerificationEmail', user[0]);
   const { id, email, lastname } = user[0];
-  console.log('sendVerificationEmail', id, email, lastname);
+
   const token = id + uuidv4();
   const link = APP_URL + 'users/verify/' + id + '/' + token;
-
-  console.log('Token: ', token, 'app url:', link);
 
   const mailOptions = {
     from: AUTH_EMAIL,
@@ -52,17 +50,18 @@ export const sendVerificationEmail = async (user, res) => {
 
   try {
     const hashedToken = await hashedString(token);
-
-    console.log(hashedToken);
-    const newVerifiedEmail = await validateEmailVerification({
+    const createdAtDate = new Date();
+    const expiresAtDate = new Date(createdAtDate.getTime() + 3600000);
+    console.log(typeof createdAtDate);
+    const newVerifiedEmail = validateEmailVerification({
       userId: id,
       token: hashedToken,
-      createdAt: Date.now(),
-      expiresAt: Date.now() * 3600000,
+      createdAt: createdAtDate,
+      expiresAt: expiresAtDate,
     });
 
-    console.log(newVerifiedEmail);
     if (newVerifiedEmail.success) {
+      await verifyEmailQuery(newVerifiedEmail);
       transporter
         .sendMail(mailOptions)
         .then(() => {
@@ -82,7 +81,7 @@ export const sendVerificationEmail = async (user, res) => {
     } else {
       console.error(newVerifiedEmail.error);
     }
-    console.log(newVerifiedEmail);
+    console.log('New verified email', newVerifiedEmail);
   } catch (error) {
     console.log(error);
     res.status(404).json({ message: 'Something went wrong' });

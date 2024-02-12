@@ -12,7 +12,6 @@ export const registerAuth = async (body) => {
     );
 
     if (userExists.rows.length > 0) {
-      dbclient.end();
       return console.log('Email already exists');
     }
     const hashedPass = await hashedString(password);
@@ -20,8 +19,7 @@ export const registerAuth = async (body) => {
       'INSERT INTO "user" (email, password, firstName, lastName) VALUES ($1, $2, $3, $4) RETURNING * ;',
       [email, hashedPass, firstName, lastName]
     );
-    console.log(user.rows);
-    sendVerificationEmail(user.rows);
+    await sendVerificationEmail(user.rows);
     await dbclient.end();
   } catch (error) {
     console.log(error);
@@ -33,12 +31,13 @@ export const loginAuth = async (body) => {
     const { email, password } = body;
     await handleDBConnection();
     const user = await dbclient.query(
-      'SELECT DISTINCT password FROM users WHERE email = $1 ',
+      'SELECT DISTINCT password FROM "user" WHERE email = $1 ',
       [email]
     );
 
+    console.log(user.rows);
     if (!user) {
-      return 'Email already exists';
+      return 'Invalid email or password';
     }
 
     if (!user?.verified) {
@@ -60,6 +59,22 @@ export const loginAuth = async (body) => {
       user,
       token,
     });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const verifyEmailQuery = async (params) => {
+  console.log('PARRAM', params);
+
+  const { userId, token, createdAt, expiresAt } = params.data;
+  try {
+    const result = await dbclient.query(
+      'INSERT INTO "emailValidation" VALUES ($1, $2, $3, $4) RETURNING *;',
+      [userId, token, createdAt, expiresAt]
+    );
+    console.log('Query result', result);
+    dbclient.end();
   } catch (error) {
     console.log(error);
   }
