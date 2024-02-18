@@ -19,8 +19,12 @@ export const register = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
-    await loginAuth(req.body);
-    res.send('<h1>Login </h1>');
+    const result = await loginAuth(req.body);
+    console.log(result);
+    res.status(201).json({
+      token: result.token,
+      message: result.message,
+    });
   } catch (error) {
     console.log(error);
     res.status(404).json({ message: error.message });

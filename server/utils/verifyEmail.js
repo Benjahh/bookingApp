@@ -62,9 +62,8 @@ export const sendVerificationEmail = async (user, res) => {
 
     if (newVerifiedEmail.success) {
       await verifyEmailQuery(newVerifiedEmail);
-      transporter
-        .sendMail(mailOptions)
-        .then(() => {
+      transporter.sendMail(mailOptions);
+      /* .then(() => {
           res.status(201).send({
             success: 'PENDING',
             message:
@@ -77,7 +76,7 @@ export const sendVerificationEmail = async (user, res) => {
         .catch((err) => {
           console.log(err);
           res.status(404).json({ message: 'Something went wrong' });
-        });
+        }); */
     } else {
       console.error(newVerifiedEmail.error);
     }

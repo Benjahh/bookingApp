@@ -1,11 +1,12 @@
-import { verifyEmailQuery } from '../models/user';
-import { validateEmailVerification } from '../schema/emailVerification';
+import { verifyUserQuery } from '../models/user.js';
+import { validateEmailVerification } from '../schema/emailVerification.js';
 
 export const verifyEmail = async (req, res, next) => {
+  console.log(req.params);
   const validation = validateEmailVerification(req.params);
   try {
     if (validation.success) {
-      await verifyEmailQuery(req.params);
+      await verifyUserQuery(req.params);
       res.send('<h1> Verified Email </h1>');
     } else {
       console.error(validation.error);
