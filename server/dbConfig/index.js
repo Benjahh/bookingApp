@@ -7,6 +7,7 @@ export const handleDBConnection = async () => {
     dbclient.connect();
     console.log('Connected to DB');
   } catch (error) {
+    console.log(error);
     console.log(error.message);
   }
 };

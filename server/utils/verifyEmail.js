@@ -4,6 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { hashedString } from './auth.js';
 import { validateEmailVerification } from '../schema/emailVerification.js';
 import { verifyEmailQuery } from '../models/auth.js';
+import { validatePasswordReset } from '../schema/passwordReset.js';
+import { createNewPasswordQuery } from '../models/user.js';
 
 dotenv.config();
 
@@ -52,7 +54,7 @@ export const sendVerificationEmail = async (user, res) => {
     const hashedToken = await hashedString(token);
     const createdAtDate = new Date();
     const expiresAtDate = new Date(createdAtDate.getTime() + 3600000);
-    console.log(typeof createdAtDate);
+
     const newVerifiedEmail = validateEmailVerification({
       userId: id,
       token: hashedToken,
@@ -81,6 +83,56 @@ export const sendVerificationEmail = async (user, res) => {
       console.error(newVerifiedEmail.error);
     }
     console.log('New verified email', newVerifiedEmail);
+  } catch (error) {
+    console.log(error);
+    res.status(404).json({ message: 'Something went wrong' });
+  }
+};
+
+export const resetPasswordLink = async (user, res) => {
+  const { id, email } = user;
+  const token = id + uuidv4();
+  const link = APP_URL + 'users/reset-password/' + id + '/' + token;
+  const mailOptions = {
+    from: AUTH_EMAIL,
+    to: email,
+    subject: 'Password Reset',
+    html: `<p style="font-family: Arial, sans-serif; font-size: 16px; color: #333; background-color: #f7f7f7; padding: 20px; border-radius: 5px;">
+         Password reset link. Please click the link below to reset password.
+        <br>
+        <p style="font-size: 18px;"><b>This link expires in 10 minutes</b></p>
+         <br>
+        <a href=${link} style="color: #fff; padding: 10px; text-decoration: none; background-color: #000;  border-radius: 8px; font-size: 18px; ">Reset Password</a>.
+    </p>`,
+  };
+
+  try {
+    const hashedToken = await hashedString(token);
+
+    const createdAtDate = new Date();
+    const expiresAtDate = new Date(createdAtDate.getTime() + 600000);
+    const validatedPassword = validatePasswordReset({
+      userId: id,
+      email: email,
+      token: hashedToken,
+      createdAt: createdAtDate,
+      expiresAt: expiresAtDate,
+    });
+
+    if (validatedPassword.success) {
+      await createNewPasswordQuery(validatedPassword);
+      transporter.sendMail(mailOptions);
+      /* .then(() => {
+          res.status(201).send({
+            success: 'PENDING',
+            message: 'Reset Password Link has been sent to your account.',
+          });
+        })
+        .catch((err) => {
+          console.log(err);
+          res.status(404).json({ message: 'Something went wrong' });
+        }); */
+    }
   } catch (error) {
     console.log(error);
     res.status(404).json({ message: 'Something went wrong' });
