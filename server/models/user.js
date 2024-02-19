@@ -57,33 +57,43 @@ export const verifyUserQuery = async (params) => {
 export const requestPassResetQuery = async (email) => {
   try {
     await handleDBConnection();
-    const result = dbclient.query('SELECT * FROM "user" WHERE email = $1', [
-      email,
-    ]);
-    if (!result.rows[0]) {
+
+    const userResult = await dbclient
+      .query('SELECT * FROM "user" WHERE email = $1', [email])
+      .catch((err) => console.log(err));
+
+    if (!userResult.rows[0]) {
+      console.log('Email address not found');
       return { message: 'Email address not found' };
-    } else {
-      const user = result.rows[0];
-      const result = await dbclient.query(
-        'SELECT * FROM "passwordReset WHERE "email" = $1',
-        [email]
-      );
-      const existingRequest = result.rows[0];
-      if (existingRequest) {
-        if (existingRequest.expiresAt > Date.now()) {
-          return { message: 'Password reset already sent. Pending.' };
-        }
-        await dbclient.query('DELETE FROM "passwordReset" WHERE "email" = $1', [
-          email,
-        ]);
-      }
-      await resetPasswordLink(user);
     }
 
+    const user = userResult.rows[0];
     console.log(user);
-    await dbclient.end();
-    return { message: '' };
-  } catch (error) {}
+
+    const passwordResetResult = await dbclient
+      .query('SELECT * FROM "passwordReset" WHERE "email" = $1', [email])
+      .catch((err) => console.log(err));
+
+    const existingRequest = passwordResetResult.rows[0];
+
+    if (existingRequest) {
+      if (existingRequest.expiresat < Date.now()) {
+        return { message: 'Password reset link already sent. Pending.' };
+      }
+
+      await dbclient
+        .query('DELETE FROM "passwordReset" WHERE "email" = $1', [email])
+        .catch((err) => console.log(err));
+      await dbclient.end();
+      return { message: 'Password reset link expired. Send again' };
+    } else {
+      await resetPasswordLink(user);
+      await dbclient.end();
+      return { message: 'Pasword reset link reset generated' };
+    }
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 export const createNewPasswordQuery = async ({
@@ -94,11 +104,12 @@ export const createNewPasswordQuery = async ({
   expiresAt,
 }) => {
   try {
-    await dbclient.query(
-      'INSERT INTO "passwordReset" (userId, email, token, createdat, expiresat) VALUES $1, $2, $3, $4',
-      [userId, email, token, createdAt, expiresAt]
-    );
-    await dbclient.end();
+    const result = await dbclient
+      .query(
+        'INSERT INTO "passwordReset" ("userId", email, token, createdat, expiresat) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [userId, email, token, createdAt, expiresAt]
+      )
+      .catch((err) => console.log(err));
   } catch (error) {
     console.log(error);
   }
@@ -107,16 +118,17 @@ export const createNewPasswordQuery = async ({
 export const resetPasswordQuery = async ({ userId, token }) => {
   try {
     await handleDBConnection();
-    const result = dbclient.query('SELECT * FROM "user" WHERE "userId" = $1', [
-      userId,
-    ]);
+    const result = await dbclient
+      .query('SELECT * FROM "user" WHERE "id" = $1', [userId])
+      .catch((err) => console.log(err));
+
+    console.log(result);
     if (!result.rows[0]) {
       return { message: 'Invalid password reset, try again' };
     } else {
-      const result = await dbclient.query(
-        'SELECT * FROM "passwordReset" WHERE "userId" = $1',
-        [userId]
-      );
+      const result = await dbclient
+        .query('SELECT * FROM "passwordReset" WHERE "userId" = $1', [userId])
+        .catch((err) => console.log(err));
       if (!result.rows[0]) {
         return { message: 'No pasword reset sent' };
       }
@@ -142,16 +154,22 @@ export const changePasswordQuery = async ({ userId, password }) => {
   try {
     handleDBConnection();
     const hashedPassword = await hashedString(password);
-    const result = dbclient.query(
-      'UPDATE "user" SET "password" = $1 WHERE "id" = $2 RETURNING *',
-      [password, userId]
-    );
-    if (result.rows[0]) {
-      await dbclient.query('DELETE FROM "passwordReset" WHERE "userId" = $1', [
+    console.log('PSS', hashedPassword);
+    const result = await dbclient
+      .query('UPDATE "user" SET "password" = $1 WHERE "id" = $2 RETURNING *', [
+        hashedPassword,
         userId,
-      ]);
+      ])
+      .catch((err) => console.log(err));
+
+    console.log(result.rows[0]);
+    if (result.rows[0]) {
+      await dbclient
+        .query('DELETE FROM "passwordReset" WHERE "userId" = $1', [userId])
+        .catch((err) => console.log(err));
       return { message: 'Password reset successfully' };
     }
+    dbclient.end();
   } catch (error) {
     console.log(error);
   }

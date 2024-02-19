@@ -1,5 +1,6 @@
 POST http://localhost:3000/users/request-passwordreset
 Content-Type: application/json
+
 {
     "email": "lucasbenja09@hotmail.com"
 }

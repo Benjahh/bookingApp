@@ -120,7 +120,7 @@ export const resetPasswordLink = async (user, res) => {
     });
 
     if (validatedPassword.success) {
-      await createNewPasswordQuery(validatedPassword);
+      await createNewPasswordQuery(validatedPassword.data);
       transporter.sendMail(mailOptions);
       /* .then(() => {
           res.status(201).send({
@@ -133,6 +133,7 @@ export const resetPasswordLink = async (user, res) => {
           res.status(404).json({ message: 'Something went wrong' });
         }); */
     }
+    console.log(validatedPassword.error);
   } catch (error) {
     console.log(error);
     res.status(404).json({ message: 'Something went wrong' });
