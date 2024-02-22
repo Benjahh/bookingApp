@@ -54,11 +54,13 @@ export const loginAuth = async (body) => {
     console.log(isMatch);
 
     user.rows[0].password = undefined;
-    console.log(user.rows[0].sid);
+
     const token = createJWT(user.rows[0].id);
     return { token, message: 'Login success' };
   } catch (error) {
     console.log(error);
+  } finally {
+    await dbclient.end();
   }
 };
 
