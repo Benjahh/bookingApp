@@ -20,9 +20,10 @@ export const registerAuth = async (body) => {
       [email, hashedPass, firstName, lastName]
     );
     await sendVerificationEmail(user.rows);
-    await dbclient.end();
   } catch (error) {
     console.log(error);
+  } finally {
+    await dbclient.end();
   }
 };
 

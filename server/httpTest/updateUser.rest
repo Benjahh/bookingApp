@@ -1,4 +1,4 @@
-PUT  http://localhost:3000/users/update-user HTTP/1.1
+PUT http://localhost:3000/users/update-user HTTP/1.1
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NDQxODkzNzMyMTQ3MjAwMDEiLCJpYXQiOjE3MDg1NTI1NDAsImV4cCI6MTcwODYzODk0MH0.eGx2KvbIrun1k5XfpwekNsZTVEX8L88wOumtGQU-Tg4
 Content-Type: application/json
 

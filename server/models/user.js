@@ -3,19 +3,20 @@ import { dbclient, handleDBConnection } from '../dbConfig/index.js';
 import { compareString, createJWT, hashedString } from '../utils/auth.js';
 import { resetPasswordLink } from '../utils/verifyEmail.js';
 
-export const verifyUserQuery = async (params) => {
-  const { userId, token } = params;
+export const verifyUserQuery = async ({ userId, token }) => {
   try {
     await handleDBConnection();
 
-    const result = await dbclient.query(
+    const {
+      rows: [emailValidation],
+    } = await dbclient.query(
       'SELECT * FROM "emailValidation" WHERE "userId" = $1',
       [userId]
     );
 
-    if (result) {
-      const { expiresAt, token: hashedToken } = result.rows;
-      console.log(result.fields);
+    if (emailValidation) {
+      const { expiresAt, token: hashedToken } = emailValidation;
+      console.log(emailValidation);
       if (expiresAt < Date.now()) {
         await dbclient.query('DELETE FROM "user" WHERE userId = $1', [userId]);
         await dbclient.query(
@@ -235,36 +236,40 @@ export const updateUserQuery = async (
   }
 };
 
-export const sendFriendRequestQuery = async (requestFrom, requestTo) => {
+export const sendFriendRequestQuery = async (requestTo, requestFrom) => {
+  console.log('QUERY', requestTo, requestFrom);
   try {
     await handleDBConnection();
-    const requestToExist = await dbclient
-      .query(
-        'SELECT * FROM "friendRequest" WHERE "requestFrom" = $1 AND "requestTo" = $2',
-        [requestFrom, requestTo]
-      )
-      .catch((err) => console.log(err));
-    if (requestToExist.rows[0]) {
-      return { message: 'Friend request already sent' };
-    }
-
-    const requestFromExist = await dbclient
-      .query(
-        'SELECT * FROM "friendRequest" WHERE "requestFrom" = $1 AND "requestTo" = $2',
-        [requestTo, requestFrom]
-      )
-      .catch((err) => console.log(err));
-
-    if (requestFromExist.rows[0]) {
-      return { message: 'Friend request already received' };
-    }
-
-    const result = await dbclient.query(
-      'INSERT INTO "friendRequest" ("requestFrom", "requestTo") VALUES ($1, $2)',
+    const {
+      rows: [requestToExist],
+    } = await dbclient.query(
+      'SELECT * FROM "friendRequest" WHERE "requestFrom" = $1 AND "requestTo" = $2',
       [requestFrom, requestTo]
     );
 
-    if (result.rows[0]) {
+    if (requestToExist) {
+      return { message: 'Friend request already sent' };
+    }
+
+    const {
+      rows: [requestFromExist],
+    } = await dbclient.query(
+      'SELECT * FROM "friendRequest" WHERE "requestFrom" = $1 AND "requestTo" = $2',
+      [requestTo, requestFrom]
+    );
+
+    if (requestFromExist) {
+      return { message: 'Friend request already received' };
+    }
+
+    const {
+      rows: [createdFriendRequest],
+    } = await dbclient.query(
+      'INSERT INTO "friendRequest" ("requestFrom", "requestTo", "requestStatus") VALUES ($1, $2, $3) RETURNING *',
+      [requestFrom, requestTo, 'Pending']
+    );
+    console.log(createdFriendRequest);
+    if (createdFriendRequest) {
       return { message: 'Friend request sent' };
     }
   } catch (err) {
@@ -276,11 +281,14 @@ export const sendFriendRequestQuery = async (requestFrom, requestTo) => {
 export const getFriendRequestQuery = async (requestTo) => {
   try {
     await handleDBConnection();
-    const friendRequest = await dbclient.query(
-      'SELECT "requestFrom" FROM "friendRequest" WHERE "requestTo" = $1 AND "requestStatus" = "Pending"',
-      [requestTo]
+    const {
+      rows: [friendRequest],
+    } = await dbclient.query(
+      'SELECT "requestFrom" FROM "friendRequest" WHERE "requestTo" = $1 AND "requestStatus" = $2',
+      [requestTo, 'Pending']
     );
-    return { data: friendRequest.rows[0] };
+    console.log(friendRequest);
+    return { data: friendRequest };
   } catch (error) {
     console.log(error);
   } finally {
@@ -289,7 +297,7 @@ export const getFriendRequestQuery = async (requestTo) => {
 };
 
 export const acceptFriendRequestQuery = async (
-  { status, requestId },
+  { requestStatus, rid: requestId },
   userId
 ) => {
   try {
@@ -297,7 +305,7 @@ export const acceptFriendRequestQuery = async (
     const {
       rows: [requestExist],
     } = await dbclient.query(
-      'SELECT * FROM "friendRequest" WHERE "requestId" = $1 ',
+      'SELECT * FROM "friendRequest" WHERE rowid = $1 ',
       [requestId]
     );
 
@@ -308,21 +316,25 @@ export const acceptFriendRequestQuery = async (
     const {
       rows: [friendRequest],
     } = await dbclient.query(
-      'UPDATE "friendRequest" SET "requestStatus" = $1 WHERE "requestId" = $2',
-      [status, requestId]
+      'UPDATE "friendRequest" SET "requestStatus" = $1 WHERE rowid = $2 RETURNING *',
+      [requestStatus, requestId]
     );
 
-    if (status === 'Accepted') {
+    console.log(userId);
+
+    console.log(friendRequest.requestTo, friendRequest.requestFrom);
+
+    if (requestStatus === 'Accepted') {
       await dbclient.query(
-        'INSERT INTO "user" ("friends") VALUES $2 WHERE "userId" = $1',
-        [userId, friendRequest.requestTo]
+        'UPDATE "user" SET friends = array_append(friends, $2) WHERE id = $1 ',
+        [userId, friendRequest.requestFrom]
       );
       await dbclient.query(
-        'INSERT INTO  "user" ("friends") VALUES = $2 WHERE "userId" = $1 ',
+        'UPDATE "user" SET friends = array_append(friends, $2) WHERE id = $1 ',
         [friendRequest.requestFrom, friendRequest.requestTo]
       );
     }
-    return { message: 'Friend Request', status };
+    return { message: 'Friend Request', requestStatus };
   } catch (error) {
     console.log(error);
   } finally {

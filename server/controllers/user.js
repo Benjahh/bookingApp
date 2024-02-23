@@ -7,6 +7,7 @@ import {
   updateUserQuery,
   sendFriendRequestQuery,
   acceptFriendRequestQuery,
+  getFriendRequestQuery,
 } from '../models/user.js';
 
 import { validateFriendRequest } from '../schema/friendRequest.js';
@@ -119,16 +120,15 @@ export const updateUser = async (req, res, next) => {
 
 export const sendFriendRequest = async (req, res) => {
   try {
-    const { userId } = req.body.user;
+    const { userId: requestFrom } = req.body.user;
     const { requestTo } = req.body;
-    const validation = validateFriendRequest({
-      requestTo,
-      requestFrom: userId,
-    });
+    const validation = validateFriendRequest({ requestTo, requestFrom });
+
+    console.log(requestFrom, requestTo);
     if (validation.success) {
-      const result = await sendFriendRequestQuery(userId, req.body);
+      const { message } = await sendFriendRequestQuery(requestTo, requestFrom);
       res.status(201).json({
-        message: result.message,
+        message,
       });
     } else {
       console.log(validation.error);
@@ -144,9 +144,9 @@ export const getFriendRequest = async (req, res) => {
     if (!req.body.user) {
       next('Friend request user error');
     }
-    const result = await getFriendRequestQuery(req.body);
+    const { data } = await getFriendRequestQuery(req.body.user.userId);
     res.status(200).json({
-      data: result.data,
+      data,
     });
   } catch (error) {
     console.log(error);
@@ -156,7 +156,17 @@ export const getFriendRequest = async (req, res) => {
 
 export const acceptFriendRequest = async (req, res) => {
   try {
-    const id = req.body.user.userId;
-    const result = await acceptFriendRequestQuery(req.body, id);
-  } catch (error) {}
+    const { userId } = req.body.user;
+    const { requestStatus, message } = await acceptFriendRequestQuery(
+      req.body,
+      userId
+    );
+    res.status(200).json({
+      message,
+      requestStatus,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(404).json({ message: error.message });
+  }
 };

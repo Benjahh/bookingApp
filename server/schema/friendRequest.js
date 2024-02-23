@@ -1,8 +1,8 @@
 import z from 'zod';
 
 const friendRequestSchema = z.object({
-  requestTo: z.object(),
-  requestFrom: z.object(),
+  requestTo: z.string(),
+  requestFrom: z.string(),
   requestStatus: z.string().default('Pending').optional(),
 });
 
