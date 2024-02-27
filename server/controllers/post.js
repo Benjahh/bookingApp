@@ -1,12 +1,15 @@
 import { dbclient } from '../dbConfig/index.js';
 import {
+  commentPostQuery,
   createPostQuery,
+  deletePostQuery,
   getCommentsQuery,
   getPostQuery,
   getPostsQuery,
   getUserPostQuery,
   likePostCommentQuery,
   likePostQuery,
+  replyPostCommentQuery,
 } from '../models/post.js';
 
 export const createPost = async (req, res, next) => {
@@ -37,15 +40,12 @@ export const getPosts = async (req, res, next) => {
     const { userId } = req.body.user;
     const { search } = req.body;
 
-    const { success, message, createdPost } = await getPostsQuery(
-      userId,
-      search
-    );
+    const { success, message, data } = await getPostsQuery(userId, search);
 
     res.status(200).json({
       success,
       message,
-      createdPost,
+      data,
     });
   } catch (error) {
     console.log(error);
@@ -101,9 +101,10 @@ export const likePost = async (req, res, next) => {
 export const likePostComment = async (req, res, next) => {
   try {
     const { userId } = req.body.user;
-    const { id, rid } = req.params;
-
-    const { success, message, data } = await likePostCommentQuery(id);
+    const { success, message, data } = await likePostCommentQuery(
+      userId,
+      req.params
+    );
     res.status(200).json({ success, message, data });
   } catch (error) {
     console.log(error);
@@ -111,10 +112,17 @@ export const likePostComment = async (req, res, next) => {
   }
 };
 
-export const getUserPost = async (req, res, next) => {
+export const commentPost = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { success, message, data } = await getUserPostQuery(id);
+    const comment = req.body;
+    const { userId } = req.body.user;
+    const { id: postId } = req.params;
+
+    const { success, message, data } = await commentPostQuery(
+      comment,
+      userId,
+      postId
+    );
     res.status(200).json({ success, message, data });
   } catch (error) {
     console.log(error);
@@ -122,10 +130,17 @@ export const getUserPost = async (req, res, next) => {
   }
 };
 
-export const getUserPost = async (req, res, next) => {
+export const replyPostComment = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { success, message, data } = await getUserPostQuery(id);
+    const comment = req.body;
+    const { userId } = req.body.user;
+    const { id: commentId } = req.params;
+
+    const { success, message, data } = await replyPostCommentQuery(
+      userId,
+      comment,
+      commentId
+    );
     res.status(200).json({ success, message, data });
   } catch (error) {
     console.log(error);
@@ -133,44 +148,11 @@ export const getUserPost = async (req, res, next) => {
   }
 };
 
-export const getUserPost = async (req, res, next) => {
+export const deletePost = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { success, message, data } = await getUserPostQuery(id);
-    res.status(200).json({ success, message, data });
-  } catch (error) {
-    console.log(error);
-    res.status(404).json({ message: error.message });
-  }
-};
-
-export const getUserPost = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { success, message, data } = await getUserPostQuery(id);
-    res.status(200).json({ success, message, data });
-  } catch (error) {
-    console.log(error);
-    res.status(404).json({ message: error.message });
-  }
-};
-
-export const getUserPost = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { success, message, data } = await getUserPostQuery(id);
-    res.status(200).json({ success, message, data });
-  } catch (error) {
-    console.log(error);
-    res.status(404).json({ message: error.message });
-  }
-};
-
-export const getUserPost = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { success, message, data } = await getUserPostQuery(id);
-    res.status(200).json({ success, message, data });
+    const { success, message } = await deletePostQuery(id);
+    res.status(200).json({ success, message });
   } catch (error) {
     console.log(error);
     res.status(404).json({ message: error.message });

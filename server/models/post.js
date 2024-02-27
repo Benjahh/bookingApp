@@ -1,13 +1,24 @@
 import { dbclient, handleDBConnection } from '../dbConfig/index.js';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_KEY,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+await handleDBConnection();
 
 export const createPostQuery = async (userId, { description, image }) => {
   try {
-    await handleDBConnection();
+    console.log(userId);
+
+    const photoUrl = await cloudinary.uploader.upload(photo);
     const {
       rows: [createdPost],
     } = await dbclient.query(
       'INSERT INTO "post" ("userId", description, image) VALUES ($1, $2, $3) RETURNING *',
-      [userId, description, image]
+      [userId, description, photoUrl.url]
     );
 
     return {
@@ -16,35 +27,53 @@ export const createPostQuery = async (userId, { description, image }) => {
       data: createdPost,
     };
   } catch (error) {
-    console.log(error);
-  } finally {
-    await dbclient.end();
+    console.log('adaafafasfasfawqotuóquotqojytóqjt', error.message);
   }
 };
 
 export const getPostsQuery = async (userId, search) => {
   try {
-    await handleDBConnection();
     const {
       rows: [user],
     } = await dbclient.query('SELECT * FROM "user" WHERE id = $1 ', [userId]);
 
-    const {
-      rows: [posts],
-    } = await dbclient.query(
-      'SELECT * FROM "post" WHERE description ILIKE $1',
-      [`%${search}%`]
-    );
+    let posts = [];
+
+    if (search) {
+      const {
+        rows: [searchPosts],
+      } = await dbclient.query(
+        'SELECT * FROM "post" WHERE description ILIKE $1',
+        [`%${search}%`]
+      );
+      posts = [searchPosts];
+    } else {
+      const {
+        rows: [userPosts],
+      } = await dbclient.query('SELECT * FROM "post" WHERE "userId" = $1', [
+        userId,
+      ]);
+      posts = [userPosts];
+    }
+
+    console.log('PPP', posts);
 
     const friends = user?.friends?.toString().split(',') || [];
     friends.push(userId);
 
-    const friendsPosts = posts.filter((post) =>
+    console.log('friends', friends);
+
+    const friendsPosts = posts?.filter((post) =>
       friends.includes(post.userId.toString())
     );
-    const otherPosts = posts.filter(
+
+    console.log('friendsposts', friendsPosts);
+
+    const otherPosts = posts?.filter(
       (post) => !friends.includes(post.userId.toString())
     );
+
+    console.log('Otherposts', otherPosts);
 
     const postsRes =
       friendsPosts.length > 0
@@ -53,44 +82,38 @@ export const getPostsQuery = async (userId, search) => {
           : [...friendsPosts, ...otherPosts]
         : posts;
 
-    return { success: true, message: 'Successfully', data: postsRes };
+    console.log(postsRes);
+
+    return { success: true, message: 'Successfully', data: postsRes[0] };
   } catch (error) {
-  } finally {
-    await dbclient.end();
+    console.log(error);
   }
 };
 
-export const getPostQuery = async (id) => {
+export const getPostQuery = async (postId) => {
   try {
-    await handleDBConnection();
     const {
       rows: [post],
-    } = await dbclient.query('SELECT * FROM "post" WHERE rowid = $1 ', [id]);
+    } = await dbclient.query('SELECT * FROM "post" WHERE id = $1 ', [postId]);
     return { success: true, message: 'Successfully', data: post };
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
   }
 };
 
 export const getUserPostQuery = async (id) => {
   try {
-    await handleDBConnection();
     const {
       rows: [post],
     } = await dbclient.query('SELECT * FROM "post" WHERE "userId"= $1 ', [id]);
     return { success: true, message: 'Successfully', data: post };
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
   }
 };
 
 export const getCommentsQuery = async (postId) => {
   try {
-    await handleDBConnection();
     const {
       rows: [comment],
     } = await dbclient.query('SELECT * FROM "comment" WHERE "postId" = $1 ', [
@@ -99,19 +122,14 @@ export const getCommentsQuery = async (postId) => {
     return { success: true, message: 'Successfully', data: comment };
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
   }
 };
 
 export const likePostQuery = async (userId, postId) => {
   try {
-    await handleDBConnection();
     const {
       rows: [post],
-    } = await dbclient.query('SELECT * FROM "post" WHERE rowid = $1 ', [
-      postId,
-    ]);
+    } = await dbclient.query('SELECT * FROM "post" WHERE id = $1 ', [postId]);
 
     const index = post.likes.findIndex((pid) => pid === String(userId));
 
@@ -120,30 +138,31 @@ export const likePostQuery = async (userId, postId) => {
     } else {
       post.likes = post.likes.filter((pid) => pid !== String(userId));
     }
+    console.log(post);
 
     const {
       rows: [newPost],
     } = await dbclient.query(
-      'INSERT INTO "post" (likes) VALUES "" RETURNING *'
+      'UPDATE "post" SET likes = array_append(likes, $1) WHERE id = $2 RETURNING *',
+      [post.likes, postId]
     );
 
     return { success: true, message: 'Successfully', data: newPost };
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
   }
 };
 
 export const likePostCommentQuery = async (userId, { id, rid }) => {
   try {
+    let updatedComment;
+    let updatedReply;
+
     handleDBConnection();
     if (rid === undefined || rid === null || rid === `false`) {
       const {
         rows: [comment],
-      } = await dbclient.query('SELECT * FROM "comment" WHERE rowid = $1  ', [
-        id,
-      ]);
+      } = await dbclient.query('SELECT * FROM "comment" WHERE id = $1  ', [id]);
 
       const index = comment.likes.findIndex((el) => el === String(userId));
 
@@ -156,14 +175,15 @@ export const likePostCommentQuery = async (userId, { id, rid }) => {
       const {
         rows: [newComment],
       } = await dbclient.query(
-        'INSERT INTO "comment" (likes) VALUES "" RETURNING * '
+        'UPDATE "comment" SET likes = array_append(likes, $1) WHERE id = $2 RETURNING * ',
+        [comment.likes, id]
       );
+
+      updatedComment = newComment;
     } else {
       const {
         rows: [replyComments],
-      } = await dbclient.query('SELECT * FROM "reply" WHERE rowid = $1  ', [
-        rid,
-      ]);
+      } = await dbclient.query('SELECT * FROM "reply" WHERE id = $1  ', [rid]);
 
       const index = replyComments?.replies[0]?.likes.findIndex(
         (i) => i === String(userId)
@@ -184,45 +204,32 @@ export const likePostCommentQuery = async (userId, { id, rid }) => {
           },
         };
       }
+      const {
+        rows: [updatedComment],
+      } = await dbclient.query(
+        'UPDATE "replies" SET likes = $3  WHERE rowid = $1 AND "commentId" = $2 ',
+        [rid, id, replyComments.replies[0].likes]
+      );
     }
-
-    const {
-      rows: [updatedComment],
-    } = await dbclient.query(
-      'UPDATE "replies" SET likes = $3  WHERE rowid = $1 AND "commentId" = $2 ',
-      [rid, id, replyComments.replies[0].likes]
-    );
 
     return { success: true, message: 'Successfully', data: updatedComment };
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
   }
 };
 
-export const commentPost = async ({ comment, from }, userId, postId) => {
+export const commentPostQuery = async ({ comment, from }, userId, postId) => {
   try {
-    await handleDBConnection();
     const {
       rows: [newComment],
     } = await dbclient.query(
-      'INSERT INTO "comment" (comment, from, "userId", "postId") VALUES ($1, $2, $3, $4) RETURNING *',
+      'INSERT INTO "comment" (comment, "from", "userId", "postId") VALUES ($1, $2, $3, $4) RETURNING *',
       [comment, from, userId, postId]
     );
 
-    const {
-      rows: [updatedPost],
-    } = await dbclient.query(
-      'UPDATE "post" SET "commmentId" = array_append(commentId, $2) WHERE rowid = $1 RETURNING *',
-      [postId, newComment.rowid]
-    );
-
-    return { success: true, message: 'Successfully', data: updatedPost };
+    return { success: true, message: 'Successfully', data: newComment };
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
   }
 };
 
@@ -234,16 +241,14 @@ export const replyPostCommentQuery = async (
   try {
     handleDBConnection();
     const {
-      rows: [comment],
+      rows: [reply],
     } = await dbclient.query(
-      'INSERT INTO "comment" ("comment", "replyAt", "from", "userId", "createdAt") VALUES ($2, $3, $4, $5, $6) WHERE rowid = $1 RETURNING *',
-      [commentId, comment, replyAt, from, userId, Date.now()]
+      'INSERT INTO "reply" ("commentId", "comment",  "from", "userId") VALUES ($1, $2, $3, $4) RETURNING *',
+      [commentId, comment, from, userId]
     );
-    return { success: true, message: 'Successfully', data: comment };
+    return { success: true, message: 'Successfully', data: reply };
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
   }
 };
 
@@ -255,7 +260,5 @@ export const deletePostQuery = async (postId) => {
     return { success: true, message: 'Deleted uccessfully' };
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
   }
 };

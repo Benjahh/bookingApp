@@ -1,6 +1,16 @@
 import { Router } from 'express';
 import userAuth from '../middleware/authMiddleware.js';
-import { createPost, getPosts } from '../controllers/post.js';
+import {
+  commentPost,
+  createPost,
+  getComments,
+  getPost,
+  getPosts,
+  getUserPost,
+  likePost,
+  likePostComment,
+  replyPostComment,
+} from '../controllers/post.js';
 
 export const postRouter = Router();
 

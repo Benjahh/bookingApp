@@ -15,7 +15,27 @@ export const ResetPassword = () => {
     mode: 'onChange',
   });
 
-  const onSubmit = async (data) => {};
+  const onSubmit = async (data) => {
+    setIsSubmitting(true);
+
+    try {
+      const res = await apiRequest({
+        url: '/users/request-passwordreset',
+        data: data,
+        method: 'POST',
+      });
+
+      if (res?.status == 'failed') {
+        setErrMsg(res);
+      } else {
+        setErrMsg(res);
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="w-full h-[100vh] bg-bgColor flex items-center justify-center p-6">
