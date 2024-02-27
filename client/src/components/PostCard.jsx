@@ -9,6 +9,19 @@ import { TextInput } from './TextInput';
 import { Loading } from './Loading';
 import { CustomButton } from './CustomButton';
 import { postComments } from '../assets/data';
+import { apiRequest } from '../utils';
+
+const getPostComments = async (id) => {
+  try {
+    const res = await apiRequest({
+      url: '/posts/comments' + id,
+      method: 'GET',
+    });
+    return res?.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 const ReplyCard = ({ reply, user, handleLike }) => {
   return (
@@ -66,7 +79,40 @@ const CommentForm = ({ user, id, replyAt, getComments }) => {
     mode: 'onChange',
   });
 
-  const onSubmit = async (data) => {};
+  const onSubmit = async (data) => {
+    setLoading(true), setErrMsg('');
+    try {
+      const url = !replyAt
+        ? '/posts/comment' + id
+        : '/posts/reply-comment/' + id;
+
+      const newData = {
+        comment: data?.comment,
+        from: user?.firstName + ' ' + user?.lastName,
+        replyAt,
+      };
+
+      const res = await apiRequest({
+        url,
+        data: newData,
+        token: user?.token,
+        method: 'POST',
+      });
+      if (res.status === 'failed') {
+        setErrMsg(res);
+      } else {
+        reset({
+          comment: '',
+        });
+        setErrMsg('');
+        await getComments();
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <form
@@ -126,13 +172,18 @@ export const PostCard = ({ post, user, deletePost, likePost }) => {
   const [replyComments, setReplyComments] = useState(0);
   const [showComments, setShowComments] = useState(0);
 
-  const getComments = async () => {
+  const getComments = async (id) => {
     setReplyComments(0);
 
+    const res = await getPostComments(id);
     setComments(postComments);
     setLoading(false);
   };
-  const handleLike = async () => {};
+
+  const handleLike = async () => {
+    await likePost(uri);
+    await getComments(post?.id);
+  };
 
   return (
     <div className="mb-2 bg-primary p-4 rounded-xl">
@@ -155,7 +206,7 @@ export const PostCard = ({ post, user, deletePost, likePost }) => {
             <span className="text-accent-2">{post?.userId?.location}</span>
           </div>
 
-          <span className="text-accent-2">
+          <span className=" hidden md:flex md:text-accent-2">
             {moment(post?.createdAt ?? '2023-05-25').fromNow()}
           </span>
         </div>
@@ -198,7 +249,10 @@ export const PostCard = ({ post, user, deletePost, likePost }) => {
         className="mt-4 flex justify-between items-center px-3 py-2 text-accent-2
       text-base border-t border-[#66666645]"
       >
-        <p className="flex gap-2 items-center text-base cursor-pointer">
+        <p
+          className="flex gap-2 items-center text-base cursor-pointer"
+          onClick={() => handleLike('/posts/like' + post?.id)}
+        >
           {post?.likes?.includes(user?._id) ? (
             <BiSolidLike size={20} color="blue" />
           ) : (
@@ -267,7 +321,12 @@ export const PostCard = ({ post, user, deletePost, likePost }) => {
                   <p className="text-accent-2">{comment?.comment}</p>
 
                   <div className="mt-2 flex gap-6">
-                    <p className="flex gap-2 items-center text-base text-accent-2 cursor-pointer">
+                    <p
+                      onClick={() => {
+                        handleLike('/posts/like-comment/' + comment?.id);
+                      }}
+                      className="flex gap-2 items-center text-base text-accent-2 cursor-pointer"
+                    >
                       {comment?.likes?.includes(user?._id) ? (
                         <BiSolidLike size={20} color="blue" />
                       ) : (

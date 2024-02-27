@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { TextInput } from './TextInput';
 import { Loading } from './Loading';
 import { CustomButton } from './CustomButton';
-import { UpdateProfile } from '../redux/userSlice';
+import { UpdateProfile, UserLogin } from '../redux/userSlice';
 
 export const EditProfile = () => {
   const { user } = useSelector((state) => state.user);
@@ -24,7 +24,7 @@ export const EditProfile = () => {
   });
 
   const onSubmit = async (data) => {
-    setPosting(true);
+    setIsSubmitting(true);
 
     setErrMsg('');
     try {
@@ -32,23 +32,25 @@ export const EditProfile = () => {
         url: '/users/udpate-user',
         token: user?.token,
         method: 'PUT',
-        data: file,
+        data: data,
       });
       if (res?.status === 'failed') {
         setErrMsg(res);
       } else {
-        reset({
-          description: '',
-        });
-        setFile(null);
         setErrMsg('');
+        const newUser = { token: res?.token, ...res?.user };
+        dispatch(UserLogin(newUser));
+
+        setTimeout(() => {
+          dispatch(UpdateProfile(false));
+        }, 3000);
 
         await fetchPosts();
       }
     } catch (error) {
       console.log(error);
     } finally {
-      setPosting(false);
+      setIsSubmitting(false);
     }
 
     const handleClose = () => {
