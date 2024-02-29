@@ -35,6 +35,8 @@ export const Home = () => {
   const [posting, setPosting] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  console.log(user.token);
+
   const dispatch = useDispatch();
 
   const {
@@ -47,13 +49,14 @@ export const Home = () => {
   const handlePostSubmit = async (data) => {
     setPosting(true);
 
+    console.log(user);
     setErrMsg('');
     try {
-      res = await apiRequest({
+      const res = await apiRequest({
         url: '/posts/create-post',
         token: user?.token,
         method: 'POST',
-        data: file,
+        data: data,
       });
       if (res?.status === 'failed') {
         setErrMsg(res);
@@ -61,7 +64,7 @@ export const Home = () => {
         reset({
           description: '',
         });
-        setFile(null);
+
         setErrMsg('');
 
         await fetchPosts();
@@ -92,7 +95,7 @@ export const Home = () => {
         token: user?.token,
         method: 'POST',
       });
-
+      console.log(res);
       setFriendRequest(res?.data);
     } catch (error) {
       console.log(error);
@@ -130,6 +133,9 @@ export const Home = () => {
     handlefetchPost();
     handleFetchFriendRequest();
   }, []);
+
+  console.log(edit);
+  console.log(posts);
 
   return (
     <>
@@ -243,10 +249,10 @@ export const Home = () => {
 
             {loading ? (
               <Loading />
-            ) : posts?.length > 0 ? (
+            ) : posts.length > 0 ? (
               posts?.map((post) => (
                 <PostCard
-                  key={post?._id}
+                  key={post?.id}
                   post={post}
                   user={user}
                   deletePost={handleDelete}
@@ -355,9 +361,8 @@ export const Home = () => {
             </div>
           </div>
         </div>
+        {edit && <EditProfile />}
       </div>
-
-      {edit && <EditProfile />}
     </>
   );
 };

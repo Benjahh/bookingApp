@@ -1,12 +1,10 @@
 import { getFriendRequest } from '../controllers/user.js';
-import { dbclient, handleDBConnection } from '../dbConfig/index.js';
+import { dbclient } from '../dbConfig/index.js';
 import { compareString, createJWT, hashedString } from '../utils/auth.js';
 import { resetPasswordLink } from '../utils/verifyEmail.js';
 
 export const verifyUserQuery = async ({ userId, token }) => {
   try {
-    await handleDBConnection();
-
     const {
       rows: [emailValidation],
     } = await dbclient.query(
@@ -16,50 +14,58 @@ export const verifyUserQuery = async ({ userId, token }) => {
 
     if (emailValidation) {
       const { expiresAt, token: hashedToken } = emailValidation;
-      console.log(emailValidation);
+
       if (expiresAt < Date.now()) {
-        await dbclient.query('DELETE FROM "user" WHERE userId = $1', [userId]);
+        await dbclient.query('DELETE FROM "user" WHERE "id" = $1', [userId]);
         await dbclient.query(
-          'DELETE FROM "emailValidation" WHERE userId = $1',
+          'DELETE FROM "emailValidation" WHERE "userId" = $1',
           [userId]
         );
 
         await dbclient.query('COMMIT');
-        console.log('Deleted validation, date less');
+        return {
+          message: 'Verification email, valitdation expired. Register again.',
+          status: 'failed',
+        };
       } else {
         const isMatch = await compareString(token, hashedToken);
 
         if (isMatch) {
-          const newuser = await dbclient.query(
-            'UPDATE "user" SET "verified" = $1 WHERE "id" = $2 RETURNING *',
+          await dbclient.query(
+            'UPDATE "user" SET "verified" = $1 WHERE "id" = $2',
             [true, userId]
           );
-          console.log(newuser.rows[0]);
+
           await dbclient.query(
             'DELETE FROM "emailValidation" WHERE "userId" = $1',
             [userId]
           );
-          await dbclient.query('COMMIT');
-          console.log('TOKEN: ', token, '/n hash /n', hashedToken);
-          console.log('Validation succes');
-        } else {
-          console.log('Verification failed or link is invalid');
+
+          return {
+            message: 'User validation complete, valitdation expired. Log in.',
+            status: 'success',
+          };
         }
       }
     } else {
-      console.log('verify erororo eoror');
+      await dbclient.query('DELETE FROM "user" WHERE "id" = $1', [userId]);
+      await dbclient.query(
+        'DELETE FROM "emailValidation" WHERE "userId" = $1',
+        [userId]
+      );
+      return {
+        message: 'Verification failed or link is invalid. Register again.',
+        status: 'failed',
+      };
     }
-    console.log('Query result', result.rows);
-    dbclient.end();
   } catch (error) {
     console.log(error);
+    return { message: error.message, status: 'failed' };
   }
 };
 
 export const requestPassResetQuery = async (email) => {
   try {
-    await handleDBConnection();
-
     const userResult = await dbclient
       .query('SELECT * FROM "user" WHERE email = $1', [email])
       .catch((err) => console.log(err));
@@ -119,7 +125,6 @@ export const createNewPasswordQuery = async ({
 
 export const resetPasswordQuery = async ({ userId, token }) => {
   try {
-    await handleDBConnection();
     const result = await dbclient
       .query('SELECT * FROM "user" WHERE "id" = $1', [userId])
       .catch((err) => console.log(err));
@@ -154,7 +159,6 @@ export const resetPasswordQuery = async ({ userId, token }) => {
 
 export const changePasswordQuery = async ({ userId, password }) => {
   try {
-    handleDBConnection();
     const hashedPassword = await hashedString(password);
     console.log('PSS', hashedPassword);
     const result = await dbclient
@@ -178,29 +182,27 @@ export const changePasswordQuery = async ({ userId, password }) => {
 };
 
 export const getUserQuery = async (userId, id) => {
-  console.log(userId);
   try {
-    await handleDBConnection();
     const {
       rows: [user],
     } = await dbclient.query('SELECT * FROM "user" WHERE id = $1 OR id = $2', [
       userId,
       id,
     ]);
-    console.log(user);
+
     if (!user) {
-      return { message: 'No such user' };
+      return { message: 'No such user exists in database', status: 'failed' };
     } else {
       user.password = undefined;
       return {
-        message: 'User query true',
+        message: 'User info retrieval ssucces',
         user,
+        status: 'success',
       };
     }
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
+    return { status: 'failed', message: 'Internal Server Error' };
   }
 };
 
@@ -209,7 +211,6 @@ export const updateUserQuery = async (
   { firstName, lastName, location, profileUrl, profession }
 ) => {
   try {
-    await handleDBConnection();
     const {
       rows: [user],
     } = await dbclient.query(
@@ -219,20 +220,20 @@ export const updateUserQuery = async (
 
     console.log(user);
     if (!user) {
-      return { message: 'No such user' };
+      return { message: 'No such user', status: 'failed' };
     } else {
       const token = createJWT(user?.userId);
       user.password = undefined;
       return {
-        message: 'User update true',
+        message: 'User updated',
         user,
         token,
+        status: 'failed',
       };
     }
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
+    return { status: 'failed', message: 'Internal Server Error' };
   }
 };
 
@@ -274,13 +275,10 @@ export const sendFriendRequestQuery = async (requestTo, requestFrom) => {
     }
   } catch (err) {
     console.log(err);
-  } finally {
-    await dbclient.end();
   }
 };
 export const getFriendRequestQuery = async (requestTo) => {
   try {
-    await handleDBConnection();
     const {
       rows: [friendRequest],
     } = await dbclient.query(
@@ -291,8 +289,6 @@ export const getFriendRequestQuery = async (requestTo) => {
     return { data: friendRequest };
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
   }
 };
 
@@ -301,7 +297,6 @@ export const acceptFriendRequestQuery = async (
   userId
 ) => {
   try {
-    await handleDBConnection();
     const {
       rows: [requestExist],
     } = await dbclient.query(
@@ -320,10 +315,6 @@ export const acceptFriendRequestQuery = async (
       [requestStatus, requestId]
     );
 
-    console.log(userId);
-
-    console.log(friendRequest.requestTo, friendRequest.requestFrom);
-
     if (requestStatus === 'Accepted') {
       await dbclient.query(
         'UPDATE "user" SET friends = array_append(friends, $2) WHERE id = $1 ',
@@ -337,7 +328,5 @@ export const acceptFriendRequestQuery = async (
     return { message: 'Friend Request', requestStatus };
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
   }
 };

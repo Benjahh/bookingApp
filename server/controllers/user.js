@@ -20,15 +20,18 @@ export const verifyEmail = async (req, res, next) => {
   const validation = validateEmailVerification(req.params);
   try {
     if (validation.success) {
-      await verifyUserQuery(req.params);
-      res.send('<h1> Verified Email </h1>');
+      const { message, status } = await verifyUserQuery(req.params);
+      res.status(201).json({
+        message,
+        status,
+      });
     } else {
       console.error(validation.error);
-      return res.status(400).send({ message: validation.error });
+      return res.status(400).send({ message: validation.error, status });
     }
   } catch (error) {
     console.log(error);
-    res.status(404).json({ message: error.message });
+    res.status(404).json({ message: error.message, status: 'failed' });
   }
 };
 
@@ -74,18 +77,18 @@ export const changePassword = async (req, res, next) => {
 };
 
 export const getUser = async (req, res, next) => {
-  console.log(req.body);
   try {
     const { id } = req.params;
     const { userId } = req.body.user;
-    const { message, user } = await getUserQuery(userId, id);
+    const { message, user, status } = await getUserQuery(userId, id);
     res.status(201).json({
       message,
       user,
+      status,
     });
   } catch (error) {
     console.log(error);
-    res.status(404).json({ error: error.message });
+    res.status(404).json({ error: error.message, status: 'failed' });
   }
 };
 
@@ -100,15 +103,11 @@ export const updateUser = async (req, res, next) => {
     const validation = validateUser(req.body);
 
     if (validation.success) {
-      const { message, user, token } = await updateUserQuery(
+      const { message, status, user, token } = await updateUserQuery(
         userId,
         validation.data
       );
-      res.status(201).json({
-        message,
-        token,
-        user,
-      });
+      res.status(201).json({ status, message, token, user });
     } else {
       console.log(validation.error);
     }

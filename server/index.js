@@ -6,6 +6,7 @@ import bodyParser from 'body-parser';
 import helmet from 'helmet';
 import { errorMiddleware } from './middleware/errorMiddleware.js';
 import { router } from './routes/index.js';
+import { handleDBConnection } from './dbConfig/index.js';
 
 dotenv.config();
 
@@ -27,3 +28,5 @@ app.use(errorMiddleware);
 app.listen(port, () => {
   console.log(`Running on port ${port}`);
 });
+
+await handleDBConnection();

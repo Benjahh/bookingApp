@@ -19,9 +19,7 @@ let transporter = nodemailer.createTransport({
   },
 });
 
-export const sendVerificationEmail = async (user, res) => {
-  const { id, email, lastname } = user[0];
-
+export const sendVerificationEmail = async ({ id, email, firstName }, res) => {
   const token = id + uuidv4();
   const link = APP_URL + 'users/verify/' + id + '/' + token;
 
@@ -33,7 +31,7 @@ export const sendVerificationEmail = async (user, res) => {
         style='font-family: Arial, sans-serif; font-size: 20px; color: #333; background-color: #f7f7f7; padding: 20px; border-radius: 5px;'>
         <h3 style="color: rgb(8, 56, 188)">Please verify your email address</h3>
         <hr>
-        <h4>Hi ${lastname},</h4>
+        <h4>Hi ${firstName},</h4>
         <p>
             Please verify your email address so we can know that it's really you.
             <br>
@@ -63,26 +61,11 @@ export const sendVerificationEmail = async (user, res) => {
     });
 
     if (newVerifiedEmail.success) {
-      await verifyEmailQuery(newVerifiedEmail);
+      await verifyEmailQuery(newVerifiedEmail.data);
       transporter.sendMail(mailOptions);
-      /* .then(() => {
-          res.status(201).send({
-            success: 'PENDING',
-            message:
-              'Verification email has been sent to your account. Check your email for further instructions.',
-          });
-          console.log(
-            'Verification email has been sent to your account. Check your email for further instructions.'
-          );
-        })
-        .catch((err) => {
-          console.log(err);
-          res.status(404).json({ message: 'Something went wrong' });
-        }); */
     } else {
       console.error(newVerifiedEmail.error);
     }
-    console.log('New verified email', newVerifiedEmail);
   } catch (error) {
     console.log(error);
     res.status(404).json({ message: 'Something went wrong' });

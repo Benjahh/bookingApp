@@ -30,7 +30,7 @@ export const Register = () => {
     try {
       const res = await apiRequest({
         url: '/auth/register',
-        data: data,
+        data,
         method: 'POST',
       });
 

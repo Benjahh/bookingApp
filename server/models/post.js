@@ -1,4 +1,5 @@
-import { dbclient, handleDBConnection } from '../dbConfig/index.js';
+import { boolean } from 'zod';
+import { dbclient } from '../dbConfig/index.js';
 import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
@@ -7,27 +8,30 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-await handleDBConnection();
-
 export const createPostQuery = async (userId, { description, image }) => {
   try {
     console.log(userId);
+    let photoUrl;
 
-    const photoUrl = await cloudinary.uploader.upload(photo);
+    if (image) {
+      photoUrl = await cloudinary.uploader.upload(image);
+    }
+
     const {
       rows: [createdPost],
     } = await dbclient.query(
       'INSERT INTO "post" ("userId", description, image) VALUES ($1, $2, $3) RETURNING *',
-      [userId, description, photoUrl.url]
+      [userId, description, photoUrl?.url]
     );
 
     return {
-      sucess: true,
+      status: 'success',
       message: 'Post created successfully',
       data: createdPost,
     };
   } catch (error) {
-    console.log('adaafafasfasfawqotuóquotqojytóqjt', error.message);
+    console.log(error.message);
+    return { message: error.message, status: 'failed' };
   }
 };
 
@@ -46,35 +50,29 @@ export const getPostsQuery = async (userId, search) => {
         'SELECT * FROM "post" WHERE description ILIKE $1',
         [`%${search}%`]
       );
-      posts = [searchPosts];
+      posts = searchPosts;
     } else {
-      const {
-        rows: [userPosts],
-      } = await dbclient.query('SELECT * FROM "post" WHERE "userId" = $1', [
-        userId,
-      ]);
-      posts = [userPosts];
+      const { rows: userPosts } = await dbclient.query(
+        'SELECT * FROM "post" WHERE "userId" = $1',
+        [userId]
+      );
+      console.log('USer posts', userPosts);
+      console.log(userPosts);
+      posts = userPosts;
     }
-
-    console.log('PPP', posts);
 
     const friends = user?.friends?.toString().split(',') || [];
     friends.push(userId);
 
-    console.log('friends', friends);
-
     const friendsPosts = posts?.filter((post) =>
       friends.includes(post.userId.toString())
     );
-
-    console.log('friendsposts', friendsPosts);
 
     const otherPosts = posts?.filter(
       (post) => !friends.includes(post.userId.toString())
     );
 
     console.log('Otherposts', otherPosts);
-
     const postsRes =
       friendsPosts.length > 0
         ? search
@@ -84,7 +82,11 @@ export const getPostsQuery = async (userId, search) => {
 
     console.log(postsRes);
 
-    return { success: true, message: 'Successfully', data: postsRes[0] };
+    return {
+      status: 'success',
+      message: 'Fetched posts successfully',
+      data: postsRes,
+    };
   } catch (error) {
     console.log(error);
   }
@@ -158,7 +160,6 @@ export const likePostCommentQuery = async (userId, { id, rid }) => {
     let updatedComment;
     let updatedReply;
 
-    handleDBConnection();
     if (rid === undefined || rid === null || rid === `false`) {
       const {
         rows: [comment],
@@ -239,7 +240,6 @@ export const replyPostCommentQuery = async (
   commentId
 ) => {
   try {
-    handleDBConnection();
     const {
       rows: [reply],
     } = await dbclient.query(
@@ -254,7 +254,6 @@ export const replyPostCommentQuery = async (
 
 export const deletePostQuery = async (postId) => {
   try {
-    handleDBConnection();
     await dbclient.query('DELETE FROM "post" WHERE rowid = $1', [postId]);
 
     return { success: true, message: 'Deleted uccessfully' };

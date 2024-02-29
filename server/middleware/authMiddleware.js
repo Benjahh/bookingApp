@@ -1,9 +1,8 @@
 import JWT from 'jsonwebtoken';
 
 const userAuth = async (req, res, next) => {
-  console.log(req.headers);
   const authHeader = req?.headers?.authorization;
-  console.log(authHeader);
+
   if (!authHeader || !authHeader?.startsWith('Bearer')) {
     next('Authentication validation failed');
   }
@@ -12,7 +11,7 @@ const userAuth = async (req, res, next) => {
 
   try {
     const userToken = JWT.verify(token, process.env.JWT_SECRET_KEY);
-    console.log(userToken);
+
     req.body.user = {
       userId: userToken.userId,
     };

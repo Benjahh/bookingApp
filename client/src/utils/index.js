@@ -31,10 +31,12 @@ export const fetchPosts = async (token, dispatch, uri, data) => {
     const res = await apiRequest({
       url: uri || '/posts',
       token: token,
-      method: 'POST',
-      data: data || {},
+      method: 'GET',
+      data: data ?? {},
     });
+
     dispatch(SetPosts(res?.data));
+
     return res;
   } catch (error) {
     console.log(error);
@@ -69,9 +71,12 @@ export const deletePost = async (id, token) => {
   }
 };
 
-export const getUserInfo = async (id, token) => {
+export const getUserInfo = async (token, id) => {
   try {
     const uri = id === undefined ? '/users/get-user' : '/users/get-user/' + id;
+
+    console.log(typeof id);
+    console.log(token);
 
     const res = await apiRequest({
       url: uri,

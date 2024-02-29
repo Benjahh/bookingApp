@@ -184,11 +184,11 @@ export const PostCard = ({ post, user, deletePost, likePost }) => {
     await likePost(uri);
     await getComments(post?.id);
   };
-
+  console.log(post);
   return (
     <div className="mb-2 bg-primary p-4 rounded-xl">
       <div className="flex gap-3 items-center mb-2">
-        <Link to={'/profile/' + post?.userId?._id}>
+        <Link to={'/profile/' + post?.userId}>
           <img
             src={post?.userId?.profileUrl ?? NoProfile}
             alt={post?.userId?.firstName}
@@ -198,7 +198,7 @@ export const PostCard = ({ post, user, deletePost, likePost }) => {
 
         <div className="w-full flex justify-between">
           <div className="">
-            <Link to={'/profile/' + post?.userId?._id}>
+            <Link to={'/profile/' + post?.userId}>
               <p className="font-medium text-lg text-accent-1">
                 {post?.userId?.firstName} {post?.userId?.lastName}
               </p>

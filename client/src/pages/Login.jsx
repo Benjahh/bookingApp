@@ -9,6 +9,7 @@ import { ImConnection } from 'react-icons/im';
 import { CustomButton, Loading, TextInput } from '../components';
 import { BgImage } from '../assets';
 import { UserLogin } from '../redux/userSlice';
+import { apiRequest } from '../utils';
 
 export const Login = () => {
   const [errMsg, setErrMsg] = useState('');
@@ -29,7 +30,8 @@ export const Login = () => {
     try {
       const res = await apiRequest({
         url: '/auth/login',
-        data: data,
+
+        data,
         method: 'POST',
       });
 
@@ -37,7 +39,9 @@ export const Login = () => {
         setErrMsg(res);
       } else {
         setErrMsg('');
+
         const newData = { token: res?.token, ...res?.user };
+
         dispatch(UserLogin(newData));
         window.location.replace('/');
       }

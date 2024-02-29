@@ -2,94 +2,102 @@ import { compareString, hashedString, createJWT } from '../utils/auth.js';
 import { sendVerificationEmail } from '../utils/verifyEmail.js';
 import { dbclient, handleDBConnection } from '../dbConfig/index.js';
 
-export const registerAuth = async (body) => {
+export const registerAuth = async ({
+  firstName,
+  lastName,
+  email,
+  password,
+}) => {
   try {
-    const { firstName, lastName, email, password } = body;
-    await handleDBConnection();
-    const userExists = await dbclient.query(
-      'SELECT email FROM "user" WHERE email = $1; ',
-      [email]
-    );
+    const {
+      rows: [user],
+    } = await dbclient.query('SELECT email FROM "user" WHERE email = $1; ', [
+      email,
+    ]);
 
-    if (userExists.rows.length > 0) {
-      return console.log('Email already exists');
+    if (user) {
+      return { message: 'Email already exists', status: 'failed' };
+    } else {
+      const hashedPass = await hashedString(password);
+
+      const {
+        rows: [newUser],
+      } = await dbclient.query(
+        'INSERT INTO "user" (email, password, firstName, lastName) VALUES ($1, $2, $3, $4) RETURNING * ;',
+        [email, hashedPass, firstName, lastName]
+      );
+      await sendVerificationEmail(newUser);
+      return {
+        status: 'pending',
+        message:
+          'Verification email has been sent to your account. Check your email for further instructions.',
+      };
     }
-    const hashedPass = await hashedString(password);
-    const user = await dbclient.query(
-      'INSERT INTO "user" (email, password, firstName, lastName) VALUES ($1, $2, $3, $4) RETURNING * ;',
-      [email, hashedPass, firstName, lastName]
-    );
-    await sendVerificationEmail(user.rows);
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
   }
 };
 
-export const loginAuth = async (body) => {
+export const loginAuth = async ({ email, password }) => {
   try {
-    const { email, password } = body;
-    await handleDBConnection();
-    const user = await dbclient.query(
-      'SELECT * FROM "user" WHERE "email" = $1 ',
-      [email]
-    );
+    const {
+      rows: [user],
+    } = await dbclient.query('SELECT * FROM "user" WHERE "email" = $1 ', [
+      email,
+    ]);
 
-    if (!user.rows[0]) {
-      return { message: 'User doesnt exist' };
+    if (!user) {
+      return { message: 'User doesnt exist', status: 'failed' };
     }
 
-    if (!user?.rows[0]?.verified) {
+    if (!user?.verified) {
       return {
         message:
           'User email is not verified. Check your email account and verify your email',
+        status: 'pending',
       };
     }
-    const isMatch = await compareString(password, user?.rows[0]?.password);
+    const isMatch = await compareString(password, user?.password);
 
     if (!isMatch) {
-      return { message: 'Invalid email or password' };
+      return { message: 'Invalid email or password', status: 'failed' };
     }
 
-    console.log(isMatch);
+    user.password = undefined;
 
-    user.rows[0].password = undefined;
-
-    const token = createJWT(user.rows[0].id);
-    return { token, message: 'Login success' };
+    const token = createJWT(user.id);
+    return { token, message: 'Login success', status: 'success', user };
   } catch (error) {
     console.log(error);
-  } finally {
-    await dbclient.end();
   }
 };
 
-export const verifyEmailQuery = async (params) => {
-  console.log('EMAIL VALIDAATION DATA', params.data);
-
-  const { userId, token, createdAt, expiresAt } = params.data;
-
+export const verifyEmailQuery = async ({
+  userId,
+  token,
+  createdAt,
+  expiresAt,
+}) => {
   try {
-    const result = await dbclient.query(
+    const {
+      rows: [validationEmail],
+    } = await dbclient.query(
       'SELECT * FROM "emailValidation" WHERE "userId" = $1',
       [userId]
     );
-    console.log('email validationr rsult row', result.rows);
-    if (result.rows.length === 0) {
-      const email = await dbclient
-        .query(
-          'INSERT INTO "emailValidation" ("userId", "token", "createdat", "expiresat") VALUES ($1, $2, $3, $4) RETURNING *;',
-          [userId, token, createdAt, expiresAt]
-        )
-        .catch((er) => {
-          console.log(er);
-        });
-      console.log('Verificationn table values created', email);
+
+    if (!validationEmail) {
+      await dbclient.query(
+        'INSERT INTO "emailValidation" ("userId", "token", "createdat", "expiresat") VALUES ($1, $2, $3, $4) RETURNING *;',
+        [userId, token, createdAt, expiresAt]
+      );
     } else {
-      console.log('values exist');
+      return {
+        message:
+          'Email vailidaation has been already sent. Confirm in your email.',
+        status: 'pending',
+      };
     }
-    dbclient.end();
   } catch (error) {
     console.log(error);
   }

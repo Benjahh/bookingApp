@@ -20,18 +20,15 @@ export const createPost = async (req, res, next) => {
       return;
     }
 
-    const { success, message, createdPost } = await createPostQuery(
-      userId,
-      req.body
-    );
+    const { status, message, data } = await createPostQuery(userId, req.body);
     res.status(200).json({
-      success,
+      status,
       message,
-      createdPost,
+      data,
     });
   } catch (error) {
     console.log(error);
-    res.status(404).json({ message: error.message });
+    res.status(404).json({ message: error.message, status: 'failed' });
   }
 };
 
@@ -40,10 +37,10 @@ export const getPosts = async (req, res, next) => {
     const { userId } = req.body.user;
     const { search } = req.body;
 
-    const { success, message, data } = await getPostsQuery(userId, search);
+    const { status, message, data } = await getPostsQuery(userId, search);
 
     res.status(200).json({
-      success,
+      status,
       message,
       data,
     });

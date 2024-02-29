@@ -14,7 +14,7 @@ import { deletePost, fetchPosts, likesPost } from '../utils';
 export const Profile = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
-  const { user } = useSelector((state) => state.user);
+
   const { posts } = useSelector((state) => state.posts);
   const [userInfo, setUserInfo] = useState(user);
   const [loading, setLoading] = useState(false);
