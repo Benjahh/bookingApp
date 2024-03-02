@@ -35,7 +35,7 @@ export const Home = () => {
   const [posting, setPosting] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  console.log(user.token);
+  console.log(user);
 
   const dispatch = useDispatch();
 
@@ -49,14 +49,15 @@ export const Home = () => {
   const handlePostSubmit = async (data) => {
     setPosting(true);
 
-    console.log(user);
+    console.log(file);
+
     setErrMsg('');
     try {
       const res = await apiRequest({
         url: '/posts/create-post',
         token: user?.token,
         method: 'POST',
-        data: data,
+        data: { data, file },
       });
       if (res?.status === 'failed') {
         setErrMsg(res);
@@ -66,13 +67,12 @@ export const Home = () => {
         });
 
         setErrMsg('');
-
-        await fetchPosts();
       }
     } catch (error) {
       console.log(error);
     } finally {
       setPosting(false);
+      await fetchPosts(user?.token, dispatch);
     }
   };
 
@@ -82,11 +82,15 @@ export const Home = () => {
   };
   const handleLikePost = async (data) => {
     await likePost({ uri: uri, token: user?.token });
-    await fetchPosts();
+    await fetchPosts(user?.token, dispatch);
   };
-  const handleDelete = async (data) => {
+  console.log(user.token);
+
+  const handleDelete = async (id) => {
+    console.log(user.token);
+
     await deletePost(id, user.token);
-    await fetchPosts();
+    await fetchPosts(user?.token, dispatch);
   };
   const handleFetchFriendRequest = async (data) => {
     try {
@@ -201,38 +205,6 @@ export const Home = () => {
                   <span>Image</span>
                 </label>
 
-                <label
-                  className="flex items-center gap-1 text-base text-accent-2 hover:text-accent-1 cursor-pointer"
-                  htmlFor="videoUpload"
-                >
-                  <input
-                    type="file"
-                    data-max-size="5120"
-                    onChange={(e) => setFile(e.target.files[0])}
-                    className="hidden"
-                    id="videoUpload"
-                    accept=".mp4, .wav"
-                  />
-                  <BiSolidVideo />
-                  <span>Video</span>
-                </label>
-
-                <label
-                  className="flex items-center gap-1 text-base text-accent-2 hover:text-accent-1 cursor-pointer"
-                  htmlFor="vgifUpload"
-                >
-                  <input
-                    type="file"
-                    data-max-size="5120"
-                    onChange={(e) => setFile(e.target.files[0])}
-                    className="hidden"
-                    id="vgifUpload"
-                    accept=".gif"
-                  />
-                  <BsFiletypeGif />
-                  <span>Gif</span>
-                </label>
-
                 <div>
                   {posting ? (
                     <Loading />
@@ -325,11 +297,11 @@ export const Home = () => {
                 {suggestedFriends?.map((friend) => (
                   <div
                     className="flex items-center justify-between"
-                    key={friend._id}
+                    key={friend.id}
                   >
                     <Link
-                      to={'/profile/' + friend?._id}
-                      key={friend?._id}
+                      to={'/profile/' + friend?.id}
+                      key={friend?.id}
                       className="w-full flex gap-4 items-center cursor-pointer"
                     >
                       <img

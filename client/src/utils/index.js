@@ -10,6 +10,8 @@ export const API = axios.create({
 
 export const apiRequest = async ({ url, token, data, method }) => {
   try {
+    console.log(data);
+    console.log(Boolean(token));
     const result = await API(url, {
       method: method || 'GET',
       data,
@@ -58,13 +60,15 @@ export const likesPost = async ({ uri, token }) => {
 };
 
 export const deletePost = async (id, token) => {
+  console.log(id);
+  console.log(token);
   try {
     const res = await apiRequest({
       url: '/posts/' + id,
-      token: token,
+      token,
       method: 'DELETE',
     });
-
+    console.log(res);
     return res;
   } catch (error) {
     console.log(error);
@@ -74,9 +78,6 @@ export const deletePost = async (id, token) => {
 export const getUserInfo = async (token, id) => {
   try {
     const uri = id === undefined ? '/users/get-user' : '/users/get-user/' + id;
-
-    console.log(typeof id);
-    console.log(token);
 
     const res = await apiRequest({
       url: uri,

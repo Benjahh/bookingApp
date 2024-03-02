@@ -76,11 +76,11 @@ export const requestPassResetQuery = async (email) => {
     }
 
     const user = userResult.rows[0];
-    console.log(user);
 
-    const passwordResetResult = await dbclient
-      .query('SELECT * FROM "passwordReset" WHERE "email" = $1', [email])
-      .catch((err) => console.log(err));
+    const passwordResetResult = await dbclient.query(
+      'SELECT * FROM "passwordReset" WHERE "email" = $1',
+      [email]
+    );
 
     const existingRequest = passwordResetResult.rows[0];
 
@@ -89,9 +89,10 @@ export const requestPassResetQuery = async (email) => {
         return { message: 'Password reset link already sent. Pending.' };
       }
 
-      await dbclient
-        .query('DELETE FROM "passwordReset" WHERE "email" = $1', [email])
-        .catch((err) => console.log(err));
+      await dbclient.query('DELETE FROM "passwordReset" WHERE "email" = $1', [
+        email,
+      ]);
+
       await dbclient.end();
       return { message: 'Password reset link expired. Send again' };
     } else {
@@ -112,12 +113,10 @@ export const createNewPasswordQuery = async ({
   expiresAt,
 }) => {
   try {
-    const result = await dbclient
-      .query(
-        'INSERT INTO "passwordReset" ("userId", email, token, createdat, expiresat) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [userId, email, token, createdAt, expiresAt]
-      )
-      .catch((err) => console.log(err));
+    const result = await dbclient.query(
+      'INSERT INTO "passwordReset" ("userId", email, token, createdat, expiresat) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [userId, email, token, createdAt, expiresAt]
+    );
   } catch (error) {
     console.log(error);
   }
@@ -125,17 +124,19 @@ export const createNewPasswordQuery = async ({
 
 export const resetPasswordQuery = async ({ userId, token }) => {
   try {
-    const result = await dbclient
-      .query('SELECT * FROM "user" WHERE "id" = $1', [userId])
-      .catch((err) => console.log(err));
+    const result = await dbclient.query(
+      'SELECT * FROM "user" WHERE "id" = $1',
+      [userId]
+    );
 
-    console.log(result);
     if (!result.rows[0]) {
       return { message: 'Invalid password reset, try again' };
     } else {
-      const result = await dbclient
-        .query('SELECT * FROM "passwordReset" WHERE "userId" = $1', [userId])
-        .catch((err) => console.log(err));
+      const result = await dbclient.query(
+        'SELECT * FROM "passwordReset" WHERE "userId" = $1',
+        [userId]
+      );
+
       if (!result.rows[0]) {
         return { message: 'No pasword reset sent' };
       }
@@ -160,19 +161,17 @@ export const resetPasswordQuery = async ({ userId, token }) => {
 export const changePasswordQuery = async ({ userId, password }) => {
   try {
     const hashedPassword = await hashedString(password);
-    console.log('PSS', hashedPassword);
-    const result = await dbclient
-      .query('UPDATE "user" SET "password" = $1 WHERE "id" = $2 RETURNING *', [
-        hashedPassword,
-        userId,
-      ])
-      .catch((err) => console.log(err));
 
-    console.log(result.rows[0]);
+    const result = await dbclient.query(
+      'UPDATE "user" SET "password" = $1 WHERE "id" = $2 RETURNING *',
+      [hashedPassword, userId]
+    );
+
     if (result.rows[0]) {
-      await dbclient
-        .query('DELETE FROM "passwordReset" WHERE "userId" = $1', [userId])
-        .catch((err) => console.log(err));
+      await dbclient.query('DELETE FROM "passwordReset" WHERE "userId" = $1', [
+        userId,
+      ]);
+
       return { message: 'Password reset successfully' };
     }
     dbclient.end();
@@ -218,7 +217,6 @@ export const updateUserQuery = async (
       [userId, firstName, lastName, location, profileUrl, profession]
     );
 
-    console.log(user);
     if (!user) {
       return { message: 'No such user', status: 'failed' };
     } else {
@@ -238,7 +236,6 @@ export const updateUserQuery = async (
 };
 
 export const sendFriendRequestQuery = async (requestTo, requestFrom) => {
-  console.log('QUERY', requestTo, requestFrom);
   try {
     await handleDBConnection();
     const {
@@ -269,7 +266,7 @@ export const sendFriendRequestQuery = async (requestTo, requestFrom) => {
       'INSERT INTO "friendRequest" ("requestFrom", "requestTo", "requestStatus") VALUES ($1, $2, $3) RETURNING *',
       [requestFrom, requestTo, 'Pending']
     );
-    console.log(createdFriendRequest);
+
     if (createdFriendRequest) {
       return { message: 'Friend request sent' };
     }
@@ -285,7 +282,7 @@ export const getFriendRequestQuery = async (requestTo) => {
       'SELECT "requestFrom" FROM "friendRequest" WHERE "requestTo" = $1 AND "requestStatus" = $2',
       [requestTo, 'Pending']
     );
-    console.log(friendRequest);
+
     return { data: friendRequest };
   } catch (error) {
     console.log(error);

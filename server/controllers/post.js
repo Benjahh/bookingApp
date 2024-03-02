@@ -11,16 +11,23 @@ import {
   likePostQuery,
   replyPostCommentQuery,
 } from '../models/post.js';
+import { userRouter } from '../routes/user.js';
 
 export const createPost = async (req, res, next) => {
   try {
     const { userId } = req.body.user;
-    if (!req.body.description) {
+
+    console.log(req.body);
+
+    if (!req.body.data.description) {
       next('You must provide a description');
       return;
     }
 
-    const { status, message, data } = await createPostQuery(userId, req.body);
+    const { status, message, data } = await createPostQuery(
+      userId,
+      req.body.data
+    );
     res.status(200).json({
       status,
       message,
@@ -87,8 +94,8 @@ export const likePost = async (req, res, next) => {
   try {
     const { userId } = req.body.user;
     const { id: postId } = req.params;
-    const { success, message, data } = await likePostQuery(userId, postId);
-    res.status(200).json({ success, message, data });
+    const { status, message, data } = await likePostQuery(userId, postId);
+    res.status(200).json({ status, message, data });
   } catch (error) {
     console.log(error);
     res.status(404).json({ message: error.message });
@@ -115,12 +122,13 @@ export const commentPost = async (req, res, next) => {
     const { userId } = req.body.user;
     const { id: postId } = req.params;
 
-    const { success, message, data } = await commentPostQuery(
+    console.log(comment, userId, postId);
+    const { status, message, data } = await commentPostQuery(
       comment,
       userId,
       postId
     );
-    res.status(200).json({ success, message, data });
+    res.status(200).json({ status, message, data });
   } catch (error) {
     console.log(error);
     res.status(404).json({ message: error.message });

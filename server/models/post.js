@@ -1,4 +1,4 @@
-import { boolean } from 'zod';
+import { boolean, map } from 'zod';
 import { dbclient } from '../dbConfig/index.js';
 import { v2 as cloudinary } from 'cloudinary';
 
@@ -10,9 +10,8 @@ cloudinary.config({
 
 export const createPostQuery = async (userId, { description, image }) => {
   try {
-    console.log(userId);
     let photoUrl;
-
+    console.log(image);
     if (image) {
       photoUrl = await cloudinary.uploader.upload(image);
     }
@@ -52,13 +51,13 @@ export const getPostsQuery = async (userId, search) => {
       );
       posts = searchPosts;
     } else {
-      const { rows: userPosts } = await dbclient.query(
-        'SELECT * FROM "post" WHERE "userId" = $1',
+      const { rows: post } = await dbclient.query(
+        'SELECT "user".location AS "userLocation", "user".lastname AS "userLastName", "user".firstname AS "userFirstName", "user".id AS "userId",  "user".profileurl AS "userProfileUrl",  "post".* FROM "post" INNER JOIN "user" ON "user".id = "post"."userId" WHERE "post"."userId" = $1',
         [userId]
       );
-      console.log('USer posts', userPosts);
-      console.log(userPosts);
-      posts = userPosts;
+      console.log(post);
+
+      posts = post;
     }
 
     const friends = user?.friends?.toString().split(',') || [];
@@ -72,15 +71,12 @@ export const getPostsQuery = async (userId, search) => {
       (post) => !friends.includes(post.userId.toString())
     );
 
-    console.log('Otherposts', otherPosts);
     const postsRes =
       friendsPosts.length > 0
         ? search
           ? friendsPosts
           : [...friendsPosts, ...otherPosts]
         : posts;
-
-    console.log(postsRes);
 
     return {
       status: 'success',
@@ -89,6 +85,7 @@ export const getPostsQuery = async (userId, search) => {
     };
   } catch (error) {
     console.log(error);
+    return { message: error.message, status: 'failed' };
   }
 };
 
@@ -100,6 +97,7 @@ export const getPostQuery = async (postId) => {
     return { success: true, message: 'Successfully', data: post };
   } catch (error) {
     console.log(error);
+    return { message: error.message, status: 'failed' };
   }
 };
 
@@ -111,19 +109,26 @@ export const getUserPostQuery = async (id) => {
     return { success: true, message: 'Successfully', data: post };
   } catch (error) {
     console.log(error);
+    return { message: error.message, status: 'failed' };
   }
 };
 
 export const getCommentsQuery = async (postId) => {
   try {
-    const {
-      rows: [comment],
-    } = await dbclient.query('SELECT * FROM "comment" WHERE "postId" = $1 ', [
-      postId,
-    ]);
-    return { success: true, message: 'Successfully', data: comment };
+    let newComments = [];
+
+    const { rows: comment } = await dbclient.query(
+      'SELECT "user".lastname AS "userLastName", "user".firstname AS "userFirstName", "user".id AS "userId",  "user".profileurl AS "userProfileUrl",  "comment".* FROM "comment" INNER JOIN "user" ON "user".id = "comment"."userId" WHERE "comment"."postId" = $1',
+      [postId]
+    );
+    newComments = comment;
+
+    console.log('2ndAARRAAYYY', newComments);
+
+    return { success: true, message: 'Successfully', data: newComments };
   } catch (error) {
     console.log(error);
+    return { message: error.message, status: 'failed' };
   }
 };
 
@@ -140,7 +145,6 @@ export const likePostQuery = async (userId, postId) => {
     } else {
       post.likes = post.likes.filter((pid) => pid !== String(userId));
     }
-    console.log(post);
 
     const {
       rows: [newPost],
@@ -152,6 +156,7 @@ export const likePostQuery = async (userId, postId) => {
     return { success: true, message: 'Successfully', data: newPost };
   } catch (error) {
     console.log(error);
+    return { message: error.message, status: 'failed' };
   }
 };
 
@@ -216,10 +221,12 @@ export const likePostCommentQuery = async (userId, { id, rid }) => {
     return { success: true, message: 'Successfully', data: updatedComment };
   } catch (error) {
     console.log(error);
+    return { message: error.message, status: 'failed' };
   }
 };
 
 export const commentPostQuery = async ({ comment, from }, userId, postId) => {
+  console.log(comment, from, userId, postId);
   try {
     const {
       rows: [newComment],
@@ -228,9 +235,14 @@ export const commentPostQuery = async ({ comment, from }, userId, postId) => {
       [comment, from, userId, postId]
     );
 
-    return { success: true, message: 'Successfully', data: newComment };
+    return {
+      status: 'succes',
+      message: 'Comment successfull',
+      data: newComment,
+    };
   } catch (error) {
     console.log(error);
+    return { message: error.message, status: 'failed' };
   }
 };
 
@@ -249,15 +261,18 @@ export const replyPostCommentQuery = async (
     return { success: true, message: 'Successfully', data: reply };
   } catch (error) {
     console.log(error);
+    return { message: error.message, status: 'failed' };
   }
 };
 
 export const deletePostQuery = async (postId) => {
   try {
-    await dbclient.query('DELETE FROM "post" WHERE rowid = $1', [postId]);
+    await dbclient.query('DELETE FROM "comment" WHERE "postId" = $1', [postId]);
+    await dbclient.query('DELETE FROM "post" WHERE id = $1', [postId]);
 
-    return { success: true, message: 'Deleted uccessfully' };
+    return { status: 'success', message: 'Deleted uccessfully' };
   } catch (error) {
     console.log(error);
+    return { message: error.message, status: 'failed' };
   }
 };

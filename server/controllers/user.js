@@ -95,7 +95,9 @@ export const getUser = async (req, res, next) => {
 export const updateUser = async (req, res, next) => {
   try {
     const { userId } = req.body.user;
+    console.log(userId);
     const { lastName, firstName, location, profession } = req.body;
+    console.log(req.body);
     if (!(firstName || lastName || contact || profession || location)) {
       next('Please provide all required fields');
       return;

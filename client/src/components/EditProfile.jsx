@@ -24,22 +24,25 @@ export const EditProfile = () => {
     defaultValues: { ...user },
   });
 
+  console.log(user?.token);
+
   const onSubmit = async (data) => {
     setIsSubmitting(true);
-
     setErrMsg('');
+
     try {
       const res = await apiRequest({
         url: '/users/udpate-user',
         token: user?.token,
         method: 'PUT',
-        data,
+        data: data,
       });
       if (res?.status === 'failed') {
         setErrMsg(res);
       } else {
         setErrMsg('');
         const newUser = { token: res?.token, ...res?.user };
+        console.log(newUser);
         dispatch(UserLogin(newUser));
 
         setTimeout(() => {
