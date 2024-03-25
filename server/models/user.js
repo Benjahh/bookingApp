@@ -181,6 +181,8 @@ export const changePasswordQuery = async ({ userId, password }) => {
 };
 
 export const getUserQuery = async (userId, id) => {
+  console.log(userId);
+  console.log(id);
   try {
     const {
       rows: [user],
@@ -189,13 +191,16 @@ export const getUserQuery = async (userId, id) => {
       id,
     ]);
 
+    console.log(user);
     if (!user) {
       return { message: 'No such user exists in database', status: 'failed' };
     } else {
       user.password = undefined;
       return {
         message: 'User info retrieval ssucces',
-        user,
+        data: {
+          user,
+        },
         status: 'success',
       };
     }
@@ -214,7 +219,7 @@ export const updateUserQuery = async (
       rows: [user],
     } = await dbclient.query(
       'UPDATE "user" SET firstname = $2, lastname = $3, location = $4, profileurl = $5, profession = $6 WHERE id = $1 RETURNING *',
-      [userId, firstName, lastName, location, profileUrl, profession]
+      [userId, firstName, lastName, location, profileUrl ?? '', profession]
     );
 
     if (!user) {
@@ -226,7 +231,7 @@ export const updateUserQuery = async (
         message: 'User updated',
         user,
         token,
-        status: 'failed',
+        status: 'success',
       };
     }
   } catch (error) {
@@ -237,7 +242,6 @@ export const updateUserQuery = async (
 
 export const sendFriendRequestQuery = async (requestTo, requestFrom) => {
   try {
-    await handleDBConnection();
     const {
       rows: [requestToExist],
     } = await dbclient.query(
@@ -276,13 +280,12 @@ export const sendFriendRequestQuery = async (requestTo, requestFrom) => {
 };
 export const getFriendRequestQuery = async (requestTo) => {
   try {
-    const {
-      rows: [friendRequest],
-    } = await dbclient.query(
-      'SELECT "requestFrom" FROM "friendRequest" WHERE "requestTo" = $1 AND "requestStatus" = $2',
+    console.log('SENT TO', requestTo);
+    const { rows: friendRequest } = await dbclient.query(
+      'SELECT "friendRequest".rowid AS "requestId", "user".lastname AS "userLastName", "user".firstname AS "userFirstName", "user".profileurl AS "userProfileUrl", "user".profession AS "userProfession" FROM "friendRequest" INNER JOIN "user" ON "friendRequest"."requestFrom" = "user".id WHERE "friendRequest"."requestTo" = $1 AND "friendRequest"."requestStatus" = $2',
       [requestTo, 'Pending']
     );
-
+    console.log(friendRequest);
     return { data: friendRequest };
   } catch (error) {
     console.log(error);
@@ -314,16 +317,58 @@ export const acceptFriendRequestQuery = async (
 
     if (requestStatus === 'Accepted') {
       await dbclient.query(
-        'UPDATE "user" SET friends = array_append(friends, $2) WHERE id = $1 ',
+        'INSERT INTO "friendships" ("user1Id", "user2Id") VALUES ($1, $2) RETURNING *',
         [userId, friendRequest.requestFrom]
       );
-      await dbclient.query(
-        'UPDATE "user" SET friends = array_append(friends, $2) WHERE id = $1 ',
-        [friendRequest.requestFrom, friendRequest.requestTo]
-      );
+
+      await dbclient.query('DELETE FROM "friendRequest" WHERE rowid = $1', [
+        requestId,
+      ]);
+
+      return { message: 'Friend Request', requestStatus };
+    } else {
+      await dbclient.query('DELETE FROM "friendRequest" WHERE rowid = $1', [
+        requestId,
+      ]);
+      return { message: 'Friend Request Denied', requestStatus };
     }
-    return { message: 'Friend Request', requestStatus };
   } catch (error) {
     console.log(error);
+  }
+};
+
+export const getSuggestedFriendsQuery = async (userId) => {
+  try {
+    let suggestedFriends = [];
+    const {
+      rows: [user],
+    } = await dbclient.query(
+      'SELECT "user".lastname AS "userLastName", "user".firstname AS "userFirstName", "user".id AS "userId", "user".profileurl AS "userProfileUrl" FROM "user" INNER JOIN "friendships" ON "user".id = "friendships"."user1Id" OR  "user".id = "friendships"."user2Id" WHERE ("friendships"."user1Id" = $1 OR "friendships"."user2Id" = $1) AND "user"."id" <> $1',
+      [userId]
+    );
+
+    if (!user) {
+      const { rows: friend } = await dbclient.query(
+        'SELECT * FROM "user" WHERE id <> $1',
+        [userId]
+      );
+
+      suggestedFriends = friend;
+
+      return {
+        data: suggestedFriends,
+        message: 'All frineds',
+        status: 'success',
+      };
+    } else {
+      return {
+        message: '',
+
+        status: 'success',
+      };
+    }
+  } catch (error) {
+    console.log(error);
+    return { status: 'failed', message: 'Internal Server Error' };
   }
 };

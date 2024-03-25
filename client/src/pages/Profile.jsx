@@ -9,7 +9,7 @@ import {
   TopBar,
 } from '../components';
 import { get } from 'react-hook-form';
-import { deletePost, fetchPosts, likesPost } from '../utils';
+import { deletePost, fetchPosts, getUserInfo, likesPost } from '../utils';
 
 export const Profile = () => {
   const { id } = useParams();
@@ -23,7 +23,9 @@ export const Profile = () => {
 
   const getUser = async () => {
     const res = await getUserInfo(user?.token, id);
+    console.log(res);
     setUserInfo(res);
+    console.log(userInfo);
   };
 
   const getPosts = async () => {

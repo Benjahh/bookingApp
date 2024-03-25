@@ -35,8 +35,6 @@ export const Home = () => {
   const [posting, setPosting] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  console.log(user);
-
   const dispatch = useDispatch();
 
   const {
@@ -84,7 +82,6 @@ export const Home = () => {
     await likePost({ uri: uri, token: user?.token });
     await fetchPosts(user?.token, dispatch);
   };
-  console.log(user.token);
 
   const handleDelete = async (id) => {
     console.log(user.token);
@@ -92,11 +89,12 @@ export const Home = () => {
     await deletePost(id, user.token);
     await fetchPosts(user?.token, dispatch);
   };
-  const handleFetchFriendRequest = async (data) => {
+  const handleFetchFriendRequest = async () => {
     try {
       const res = await apiRequest({
         url: '/users/get-friend-request',
         token: user?.token,
+
         method: 'POST',
       });
       console.log(res);
@@ -105,9 +103,29 @@ export const Home = () => {
       console.log(error);
     }
   };
+
+  const handleSuggestedFriends = async () => {
+    try {
+      const res = await apiRequest({
+        url: '/users/suggested-friends',
+        token: user?.token,
+        method: 'POST',
+      });
+
+      console.log(res);
+
+      setSuggestedFriends(res?.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   const handleSendFriendRequest = async (id) => {
     try {
-      const res = await sendFriendRequest(user.token, id);
+      const res = await sendFriendRequest(id, user.token);
+      console.log(res);
+
+      handleFetchFriendRequest();
     } catch (error) {
       console.log(error);
     }
@@ -127,7 +145,10 @@ export const Home = () => {
   };
   const handleGetUser = async (data) => {
     const res = await getUserInfo(user?.token);
+    console.log(res);
+    console.log(user.token);
     const newData = { token: user?.token, ...res };
+    console.log(newData);
     dispatch(UserLogin(newData));
   };
 
@@ -135,11 +156,11 @@ export const Home = () => {
     setLoading(true);
     handleGetUser();
     handlefetchPost();
+    handleSuggestedFriends();
     handleFetchFriendRequest();
   }, []);
 
-  console.log(edit);
-  console.log(posts);
+  console.log(friendRequest);
 
   return (
     <>
@@ -243,48 +264,62 @@ export const Home = () => {
             {/* FRIEND REQUEST */}
             <div className="w-full bg-primary shadow-sm rounded-lg px-6 py-5">
               <div className="flex items-center justify-between text-xl text-accent-1 pb-2 border-b border-[#66666645]">
-                <span> Friend Request</span>
-                <span>{friendRequest?.length}</span>
+                <span> Friend Requests</span>
+                <span>{friendRequest?.length ?? 0}</span>
               </div>
 
               <div className="w-full flex flex-col gap-4 pt-4">
-                {friendRequest?.map(({ _id, requestFrom: from }) => (
-                  <div key={_id} className="flex items-center justify-between">
-                    <Link
-                      to={'/profile/' + from._id}
-                      className="w-full flex gap-4 items-center cursor-pointer"
+                {friendRequest?.map(
+                  ({
+                    requestId,
+                    userId,
+                    userFirstName,
+                    userLastName,
+                    userProfession,
+                    userProfileUrl,
+                  }) => (
+                    <div
+                      key={userId}
+                      className="flex items-center justify-between"
                     >
-                      <img
-                        src={from?.profileUrl ?? NoProfile}
-                        alt={from?.firstName}
-                        className="w-10 h-10 object-cover rounded-full"
-                      />
-                      <div className="flex-1">
-                        <p className="text-base font-medium text-accent-1">
-                          {from?.firstName} {from?.lastName}
-                        </p>
-                        <span className="text-sm text-accent-2">
-                          {from?.profession ?? 'No Profession'}
-                        </span>
-                      </div>
-                    </Link>
+                      <Link
+                        to={'/profile/' + userId}
+                        className="w-full flex gap-4 items-center cursor-pointer"
+                      >
+                        <img
+                          src={userProfileUrl ?? NoProfile}
+                          alt={userFirstName}
+                          className="w-10 h-10 object-cover rounded-full"
+                        />
+                        <div className="flex-1">
+                          <p className="text-base font-medium text-accent-1">
+                            {userFirstName} {userLastName}
+                          </p>
+                          <span className="text-sm text-accent-2">
+                            {userProfession ?? 'No Profession'}
+                          </span>
+                        </div>
+                      </Link>
 
-                    <div className="flex gap-1">
-                      <CustomButton
-                        title="Accept"
-                        onClick={() =>
-                          handleAcceptFriendRequest(id, 'Accepted')
-                        }
-                        containerStyles="bg-[#0444a4] text-xs text-white px-1.5 py-1 rounded-full"
-                      />
-                      <CustomButton
-                        title="Deny"
-                        onClick={() => handleAcceptFriendRequest(id, 'Denied')}
-                        containerStyles="border border-[#666] text-xs text-accent-1 px-1.5 py-1 rounded-full"
-                      />
+                      <div className="flex gap-1">
+                        <CustomButton
+                          title="Accept"
+                          onClick={() =>
+                            handleAcceptFriendRequest(requestId, 'Accepted')
+                          }
+                          containerStyles="bg-[#0444a4] text-xs text-white px-1.5 py-1 rounded-full"
+                        />
+                        <CustomButton
+                          title="Deny"
+                          onClick={() =>
+                            handleAcceptFriendRequest(requestId, 'Denied')
+                          }
+                          containerStyles="border border-[#666] text-xs text-accent-1 px-1.5 py-1 rounded-full"
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             </div>
 
@@ -305,13 +340,13 @@ export const Home = () => {
                       className="w-full flex gap-4 items-center cursor-pointer"
                     >
                       <img
-                        src={friend?.profileUrl ?? NoProfile}
-                        alt={friend?.firstName}
+                        src={friend?.profileurl ?? NoProfile}
+                        alt={friend?.firstname}
                         className="w-10 h-10 object-cover rounded-full"
                       />
                       <div className="flex-1 ">
                         <p className="text-base font-medium text-accent-1">
-                          {friend?.firstName} {friend?.lastName}
+                          {friend?.firstname} {friend?.lastname}
                         </p>
                         <span className="text-sm text-accent-2">
                           {friend?.profession ?? 'No Profession'}
@@ -322,7 +357,7 @@ export const Home = () => {
                     <div className="flex gap-1">
                       <button
                         className="bg-[#0444a430] text-sm text-white p-1 rounded"
-                        onClick={() => handleFetchFriendRequest(friend?.id)}
+                        onClick={() => handleSendFriendRequest(friend?.id)}
                       >
                         <BsPersonFillAdd size={20} className="text-[#0f52b6]" />
                       </button>

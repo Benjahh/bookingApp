@@ -68,6 +68,7 @@ export const deletePost = async (id, token) => {
       token,
       method: 'DELETE',
     });
+
     console.log(res);
     return res;
   } catch (error) {
@@ -85,13 +86,15 @@ export const getUserInfo = async (token, id) => {
       method: 'POST',
     });
 
+    console.log(res);
+
     if (res?.message === 'Authentication failed') {
       localStorage.removeItem('user');
       window.alert('User session expired. Please login again');
       window.location.replace('/login');
     }
-
-    return res?.user;
+    console.log(res);
+    return res?.data.user;
   } catch (error) {
     console.log(error);
   }

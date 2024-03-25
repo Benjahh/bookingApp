@@ -8,6 +8,7 @@ import {
   sendFriendRequestQuery,
   acceptFriendRequestQuery,
   getFriendRequestQuery,
+  getSuggestedFriendsQuery,
 } from '../models/user.js';
 
 import { validateFriendRequest } from '../schema/friendRequest.js';
@@ -80,10 +81,11 @@ export const getUser = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { userId } = req.body.user;
-    const { message, user, status } = await getUserQuery(userId, id);
+    console.log('First user id' + id, 'Second user id' + userId);
+    const { message, data, status } = await getUserQuery(userId, id);
     res.status(201).json({
       message,
-      user,
+      data,
       status,
     });
   } catch (error) {
@@ -102,17 +104,12 @@ export const updateUser = async (req, res, next) => {
       next('Please provide all required fields');
       return;
     }
-    const validation = validateUser(req.body);
 
-    if (validation.success) {
-      const { message, status, user, token } = await updateUserQuery(
-        userId,
-        validation.data
-      );
-      res.status(201).json({ status, message, token, user });
-    } else {
-      console.log(validation.error);
-    }
+    const { message, status, user, token } = await updateUserQuery(
+      userId,
+      req.body
+    );
+    res.status(201).json({ status, message, token, user });
   } catch (error) {
     console.log(error);
     res.status(404).json({ message: error.message });
@@ -145,7 +142,8 @@ export const getFriendRequest = async (req, res) => {
     if (!req.body.user) {
       next('Friend request user error');
     }
-    const { data } = await getFriendRequestQuery(req.body.user.userId);
+    const { userId } = req.body.user;
+    const { data } = await getFriendRequestQuery(userId);
     res.status(200).json({
       data,
     });
@@ -169,5 +167,20 @@ export const acceptFriendRequest = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(404).json({ message: error.message });
+  }
+};
+
+export const suggestedFriends = async (req, res, next) => {
+  try {
+    const { userId } = req.body.user;
+    const { message, data, status } = await getSuggestedFriendsQuery(userId);
+    res.status(201).json({
+      message,
+      data,
+      status,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(404).json({ error: error.message, status: 'failed' });
   }
 };

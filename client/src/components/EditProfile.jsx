@@ -32,11 +32,13 @@ export const EditProfile = () => {
 
     try {
       const res = await apiRequest({
-        url: '/users/udpate-user',
+        url: '/users/update-user',
         token: user?.token,
         method: 'PUT',
         data: data,
       });
+
+      console.log(res);
       if (res?.status === 'failed') {
         setErrMsg(res);
       } else {
@@ -48,13 +50,12 @@ export const EditProfile = () => {
         setTimeout(() => {
           dispatch(UpdateProfile(false));
         }, 3000);
-
-        await fetchPosts();
       }
     } catch (error) {
       console.log(error);
     } finally {
       setIsSubmitting(false);
+      await fetchPosts(user?.token, dispatch);
     }
   };
 
