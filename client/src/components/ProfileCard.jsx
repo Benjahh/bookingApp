@@ -18,10 +18,8 @@ import { UpdateProfile } from '../redux/userSlice';
 export const ProfileCard = ({ user }) => {
   const { user: data, edit } = useSelector((state) => state.user);
   const dispatch = useDispatch();
-
-  console.log(edit);
   console.log(user);
-  console.log(user.firstname);
+
   return (
     <div>
       <div className="w-full bg-primary flex flex-col items-center shadow-sm rounded-xl px-6 py-4 ">

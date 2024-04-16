@@ -1,3 +1,5 @@
+import { getLogger } from 'nodemailer/lib/shared/index.js';
+
 import { getFriendRequest } from '../controllers/user.js';
 import { dbclient } from '../dbConfig/index.js';
 import { compareString, createJWT, hashedString } from '../utils/auth.js';
@@ -183,15 +185,21 @@ export const changePasswordQuery = async ({ userId, password }) => {
 export const getUserQuery = async (userId, id) => {
   console.log(userId);
   console.log(id);
+
   try {
     const {
       rows: [user],
-    } = await dbclient.query('SELECT * FROM "user" WHERE id = $1 OR id = $2', [
+    } = await dbclient.query('SELECT * FROM "user" WHERE id = $1 OR id = $2;', [
       userId,
       id,
     ]);
-
-    console.log(user);
+    const { rows: friend } = await dbclient
+      .query(
+        'SELECT "user".profession AS "userProfession", "user".lastname AS "userLastName", "user".firstname AS "userFirstName", "user".id AS "userId", "user".profileurl AS "userProfileUrl" FROM "friendships" INNER JOIN "user" ON "user".id = "user2Id" WHERE "user1Id" = $1 OR "user1Id" = $2;',
+        [userId, id]
+      )
+      .catch((err) => console.log(err));
+    console.log(friend);
     if (!user) {
       return { message: 'No such user exists in database', status: 'failed' };
     } else {
@@ -199,7 +207,10 @@ export const getUserQuery = async (userId, id) => {
       return {
         message: 'User info retrieval ssucces',
         data: {
-          user,
+          user: {
+            ...user,
+            friends: friend ?? null,
+          },
         },
         status: 'success',
       };
@@ -293,7 +304,7 @@ export const getFriendRequestQuery = async (requestTo) => {
 };
 
 export const acceptFriendRequestQuery = async (
-  { requestStatus, rid: requestId },
+  { status: requestStatus, rid: requestId },
   userId
 ) => {
   try {
@@ -338,32 +349,40 @@ export const acceptFriendRequestQuery = async (
 };
 
 export const getSuggestedFriendsQuery = async (userId) => {
+  getLogger;
   try {
-    let suggestedFriends = [];
-    const {
-      rows: [user],
-    } = await dbclient.query(
-      'SELECT "user".lastname AS "userLastName", "user".firstname AS "userFirstName", "user".id AS "userId", "user".profileurl AS "userProfileUrl" FROM "user" INNER JOIN "friendships" ON "user".id = "friendships"."user1Id" OR  "user".id = "friendships"."user2Id" WHERE ("friendships"."user1Id" = $1 OR "friendships"."user2Id" = $1) AND "user"."id" <> $1',
+    const { rows: friend } = await dbclient.query(
+      'SELECT "user2Id" FROM "friendships" WHERE "user1Id" = $1',
       [userId]
     );
 
-    if (!user) {
-      const { rows: friend } = await dbclient.query(
-        'SELECT * FROM "user" WHERE id <> $1',
-        [userId]
+    console.log('Results offf friends', friend);
+
+    if (friend) {
+      let friends = [];
+      friends = friend.map(({ user2Id }) => user2Id);
+      console.log(friends, 'toejyttawotgapp');
+
+      const { rows: user } = await dbclient.query(
+        'SELECT "user".profession AS "userProfession", "user".lastname AS "userLastName", "user".firstname AS "userFirstName", "user".id AS "userId", "user".profileurl AS "userProfileUrl" FROM "friendships" INNER JOIN "user" ON "user".id <> $2 AND "user".id <> $1 WHERE "user1Id" = $1 AND "user".id IN ($2);',
+        [userId, friends]
       );
-
-      suggestedFriends = friend;
-
+      console.log(user);
       return {
-        data: suggestedFriends,
-        message: 'All frineds',
+        message: 'Suggested users',
+        data: user,
         status: 'success',
       };
     } else {
-      return {
-        message: '',
+      const { rows: user } = await dbclient.query(
+        'SELECT "user".profession AS "userProfession", "user".lastname AS "userLastName", "user".firstname AS "userFirstName", "user".id AS "userId", "user".profileurl AS "userProfileUrl" FROM "user" WHERE id <> $1;',
+        [userId]
+      );
 
+      console.log('Uswerhtpaht', user);
+      return {
+        message: 'Suggested users',
+        data: user,
         status: 'success',
       };
     }

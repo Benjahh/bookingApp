@@ -94,7 +94,7 @@ export const getUserInfo = async (token, id) => {
       window.location.replace('/login');
     }
     console.log(res);
-    return res?.data.user;
+    return res?.data?.user;
   } catch (error) {
     console.log(error);
   }

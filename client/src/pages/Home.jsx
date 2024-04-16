@@ -37,6 +37,7 @@ export const Home = () => {
 
   const dispatch = useDispatch();
 
+  console.log(suggestedFriends);
   const {
     register,
     handleSubmit,
@@ -94,7 +95,6 @@ export const Home = () => {
       const res = await apiRequest({
         url: '/users/get-friend-request',
         token: user?.token,
-
         method: 'POST',
       });
       console.log(res);
@@ -111,8 +111,6 @@ export const Home = () => {
         token: user?.token,
         method: 'POST',
       });
-
-      console.log(res);
 
       setSuggestedFriends(res?.data);
     } catch (error) {
@@ -171,6 +169,7 @@ export const Home = () => {
           {/* LEFT */}
           <div className="hidden w-1/3 lg:w-1/4 h-full md:flex flex-col gap-6 overflow-y-auto">
             <ProfileCard user={user} />
+
             <FriendsCard friends={user?.friends} />
           </div>
 
@@ -259,8 +258,8 @@ export const Home = () => {
             )}
           </div>
 
-          {/* RIGJT */}
-          <div className="hidden w-1/4 h-full lg:flex flex-col gap-8 overflow-y-auto">
+          {/* RIGHT */}
+          <div className="hidden w-1/4 h-full lg:flex flex-col gap-8 overflow-y-auto  ">
             {/* FRIEND REQUEST */}
             <div className="w-full bg-primary shadow-sm rounded-lg px-6 py-5">
               <div className="flex items-center justify-between text-xl text-accent-1 pb-2 border-b border-[#66666645]">
@@ -304,16 +303,18 @@ export const Home = () => {
                       <div className="flex gap-1">
                         <CustomButton
                           title="Accept"
-                          onClick={() =>
-                            handleAcceptFriendRequest(requestId, 'Accepted')
-                          }
+                          onClick={() => {
+                            handleAcceptFriendRequest(requestId, 'Denied');
+                            handleSuggestedFriends();
+                          }}
                           containerStyles="bg-[#0444a4] text-xs text-white px-1.5 py-1 rounded-full"
                         />
                         <CustomButton
                           title="Deny"
-                          onClick={() =>
-                            handleAcceptFriendRequest(requestId, 'Denied')
-                          }
+                          onClick={() => {
+                            handleAcceptFriendRequest(requestId, 'Denied');
+                            handleSuggestedFriends();
+                          }}
                           containerStyles="border border-[#666] text-xs text-accent-1 px-1.5 py-1 rounded-full"
                         />
                       </div>
@@ -332,24 +333,24 @@ export const Home = () => {
                 {suggestedFriends?.map((friend) => (
                   <div
                     className="flex items-center justify-between"
-                    key={friend.id}
+                    key={friend?.userId}
                   >
                     <Link
-                      to={'/profile/' + friend?.id}
-                      key={friend?.id}
+                      to={'/profile/' + friend?.userId}
+                      key={friend?.userId}
                       className="w-full flex gap-4 items-center cursor-pointer"
                     >
                       <img
-                        src={friend?.profileurl ?? NoProfile}
-                        alt={friend?.firstname}
+                        src={friend?.userProfileUrl ?? NoProfile}
+                        alt={friend?.userFirstName}
                         className="w-10 h-10 object-cover rounded-full"
                       />
                       <div className="flex-1 ">
                         <p className="text-base font-medium text-accent-1">
-                          {friend?.firstname} {friend?.lastname}
+                          {friend?.userFirstName} {friend?.userLastName}
                         </p>
                         <span className="text-sm text-accent-2">
-                          {friend?.profession ?? 'No Profession'}
+                          {friend?.userProfession ?? 'No Profession'}
                         </span>
                       </div>
                     </Link>
@@ -357,7 +358,7 @@ export const Home = () => {
                     <div className="flex gap-1">
                       <button
                         className="bg-[#0444a430] text-sm text-white p-1 rounded"
-                        onClick={() => handleSendFriendRequest(friend?.id)}
+                        onClick={() => handleSendFriendRequest(friend?.userId)}
                       >
                         <BsPersonFillAdd size={20} className="text-[#0f52b6]" />
                       </button>

@@ -69,7 +69,7 @@ export const Profile = () => {
               posts?.map((post) => (
                 <PostCard
                   post={post}
-                  key={post?._id}
+                  key={post?.id}
                   user={user}
                   deletePost={handleDelete}
                   likePost={handleLikePost}
