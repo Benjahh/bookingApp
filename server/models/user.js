@@ -183,9 +183,6 @@ export const changePasswordQuery = async ({ userId, password }) => {
 };
 
 export const getUserQuery = async (userId, id) => {
-  console.log(userId);
-  console.log(id);
-
   try {
     const {
       rows: [user],
@@ -195,7 +192,28 @@ export const getUserQuery = async (userId, id) => {
     ]);
     const { rows: friend } = await dbclient
       .query(
-        'SELECT "user".profession AS "userProfession", "user".lastname AS "userLastName", "user".firstname AS "userFirstName", "user".id AS "userId", "user".profileurl AS "userProfileUrl" FROM "friendships" INNER JOIN "user" ON "user".id = "user2Id" WHERE "user1Id" = $1 OR "user1Id" = $2;',
+        `
+        SELECT 
+            "user".profession AS "userProfession",
+            "user".lastname AS "userLastName",
+            "user".firstname AS "userFirstName",
+            "user".id AS "userId",
+            "user".profileurl AS "userProfileUrl"
+        FROM 
+            "user"
+        WHERE 
+           "user".id IN (
+                SELECT 
+                    CASE 
+                        WHEN ("user1Id" = $1 OR "user1Id" = $2) THEN "user2Id"
+                        ELSE "user1Id"
+                    END AS "friendId"
+                FROM 
+                    friendships
+                WHERE 
+                    ("user1Id" = $1 OR "user2Id" = $1)
+            );
+        `,
         [userId, id]
       )
       .catch((err) => console.log(err));
@@ -349,43 +367,38 @@ export const acceptFriendRequestQuery = async (
 };
 
 export const getSuggestedFriendsQuery = async (userId) => {
-  getLogger;
   try {
-    const { rows: friend } = await dbclient.query(
-      'SELECT "user2Id" FROM "friendships" WHERE "user1Id" = $1',
+    const { rows: suggestedUsers } = await dbclient.query(
+      `
+        SELECT 
+            "user".profession AS "userProfession",
+            "user".lastname AS "userLastName",
+            "user".firstname AS "userFirstName",
+            "user".id AS "userId",
+            "user".profileurl AS "userProfileUrl"
+        FROM 
+            "user"
+        WHERE 
+            "user".id <> $1
+            AND "user".id NOT IN (
+                SELECT 
+                    CASE 
+                        WHEN "user1Id" = $1 THEN "user2Id"
+                        ELSE "user1Id"
+                    END AS "friendId"
+                FROM 
+                    friendships
+                WHERE 
+                    ("user1Id" = $1 OR "user2Id" = $1)
+            );
+        `,
       [userId]
     );
-
-    console.log('Results offf friends', friend);
-
-    if (friend) {
-      let friends = [];
-      friends = friend.map(({ user2Id }) => user2Id);
-      console.log(friends, 'toejyttawotgapp');
-
-      const { rows: user } = await dbclient.query(
-        'SELECT "user".profession AS "userProfession", "user".lastname AS "userLastName", "user".firstname AS "userFirstName", "user".id AS "userId", "user".profileurl AS "userProfileUrl" FROM "friendships" INNER JOIN "user" ON "user".id <> $2 AND "user".id <> $1 WHERE "user1Id" = $1 AND "user".id IN ($2);',
-        [userId, friends]
-      );
-      console.log(user);
-      return {
-        message: 'Suggested users',
-        data: user,
-        status: 'success',
-      };
-    } else {
-      const { rows: user } = await dbclient.query(
-        'SELECT "user".profession AS "userProfession", "user".lastname AS "userLastName", "user".firstname AS "userFirstName", "user".id AS "userId", "user".profileurl AS "userProfileUrl" FROM "user" WHERE id <> $1;',
-        [userId]
-      );
-
-      console.log('Uswerhtpaht', user);
-      return {
-        message: 'Suggested users',
-        data: user,
-        status: 'success',
-      };
-    }
+    return {
+      message: 'Suggested users',
+      data: suggestedUsers,
+      status: 'success',
+    };
   } catch (error) {
     console.log(error);
     return { status: 'failed', message: 'Internal Server Error' };

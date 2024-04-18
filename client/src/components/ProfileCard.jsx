@@ -79,13 +79,6 @@ export const ProfileCard = ({ user }) => {
           <span className="text-base text-blue">
             {user?.verified ? 'Verified Account' : 'Not Verified'}
           </span>
-
-          <div className="flex items-center justify-between">
-            <span className="text-accent-2">Joined</span>
-            <span className="text-accent-1 text-base">
-              {moment(user?.createdat).fromNow()}
-            </span>
-          </div>
         </div>
 
         <div className="w-full flex flex-col gap-4 py-4 pb-6">

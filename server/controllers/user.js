@@ -151,7 +151,6 @@ export const getFriendRequest = async (req, res) => {
     console.log(error);
     res.status(404).json({ message: error.message });
   }
-  s;
 };
 
 export const acceptFriendRequest = async (req, res) => {

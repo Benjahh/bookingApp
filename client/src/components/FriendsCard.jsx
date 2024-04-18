@@ -6,7 +6,7 @@ export const FriendsCard = ({ friends }) => {
   return (
     <div>
       <div className="w-full bg-primary shadow-sm rounded-lg px-6 py-5">
-        <div className="flex items-center justify-between text-accent-1 pb-2 border-b border-[#66666645]">
+        <div className="flex items-center justify-between text-xl text-accent-1 pb-2 border-b font-bold border-[#66666645]">
           <span> Friends</span>
           <span>{friends ? friends?.length : '0'} </span>
         </div>

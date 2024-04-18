@@ -10,8 +10,8 @@ export default {
         blue: 'rgb(var(--color-blue) / <alpha-value>)',
         white: 'rgb(var(--color-white) / <alpha-value>)',
         accent: {
-          1: 'rgb(var(--color-ascent1) / <alpha-value>)',
-          2: 'rgb(var(--color-ascent2) / <alpha-value>)',
+          1: 'rgb(var(--color-accent1) / <alpha-value>)',
+          2: 'rgb(var(--color-accent2) / <alpha-value>)',
         },
       },
       screens: {
